@@ -1,0 +1,50 @@
+{
+  "_说明": "复制本文件为 .fde-data/providers.json 使用：mkdir -p .fde-data && cp providers.example.json .fde-data/providers.json。apiKey 留空，启动后在页面设置里填写，Key 只保存在本地此文件中，请勿提交到 Git（.gitignore 已忽略 .fde-data/）。",
+  "providers": [
+    {
+      "id": "p-claude",
+      "name": "Claude 官方",
+      "type": "official",
+      "color": "blue",
+      "baseUrl": "https://api.anthropic.com",
+      "modelsUrl": "",
+      "apiKey": "",
+      "model": "claude-opus-5-5",
+      "effort": "medium"
+    },
+    {
+      "id": "p-deepseek",
+      "name": "DeepSeek",
+      "type": "relay",
+      "color": "indigo",
+      "baseUrl": "https://api.deepseek.com/anthropic",
+      "modelsUrl": "https://api.deepseek.com/models",
+      "apiKey": "",
+      "model": "deepseek-reasoner",
+      "effort": "medium"
+    },
+    {
+      "id": "p-kimi",
+      "name": "Kimi",
+      "type": "relay",
+      "color": "green",
+      "baseUrl": "https://api.moonshot.cn/anthropic",
+      "modelsUrl": "https://api.moonshot.cn/v1/models",
+      "apiKey": "",
+      "model": "kimi-k2",
+      "effort": "medium"
+    },
+    {
+      "id": "p-glm",
+      "name": "GLM",
+      "type": "relay",
+      "color": "amber",
+      "baseUrl": "https://open.bigmodel.cn/api/anthropic",
+      "modelsUrl": "https://open.bigmodel.cn/api/paas/v4/models",
+      "apiKey": "",
+      "model": "glm-4.7",
+      "effort": "medium"
+    }
+  ],
+  "activeId": "p-claude"
+}

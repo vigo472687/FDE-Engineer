@@ -1,0 +1,1636 @@
+<title>FDE 工作台</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+<style>
+/* ============================================================
+   FDE Workbench — 首页设计稿
+   Layout: 232px 固定侧栏 + 白色主面板（左上 12px 圆角）
+   主面板自上而下三区块：01/OVERVIEW · 02/DELIVERY · 03/SIGNALS
+   单一浅色主题（企业控制台），色彩全部走 token
+   ============================================================ */
+:root {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --line: #E9EBF0;
+  --card-line: #EDEFF3;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-soft: #EAF1FF;
+  --primary-tint: #C9D9F9;
+  --indigo: #6366F1;
+  --indigo-soft: #EEF0FF;
+  --ok: #16A34A;
+  --ok-soft: #ECFDF3;
+  --warn: #F59E0B;
+  --warn-soft: #FFFAEB;
+  --err: #EF4444;
+  --err-soft: #FEF3F2;
+  --tx: #0F172A;
+  --tx2: #6B7280;
+  --tx3: #9CA3AF;
+  --fill: #F2F4F7;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --r-card: 12px;
+  --r-ctrl: 8px;
+  --sans: "Inter", -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+svg { flex: none; }
+
+::selection { background: var(--primary-soft); }
+
+/* ---------- 骨架 ---------- */
+.app { display: flex; align-items: flex-start; min-height: 100vh; }
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+  width: 232px;
+  flex: none;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 12px 16px;
+  overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--primary); color: #fff;
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 14px; letter-spacing: 0.02em;
+}
+.brand-name { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.brand-sub { font-size: 11px; color: var(--tx3); line-height: 1.4; }
+
+.nav-group { margin-top: 20px; }
+.nav-label {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding: 0 10px; margin-bottom: 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0; background: none; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500; color: var(--tx2);
+  text-align: left; line-height: 1.4;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item svg { color: var(--tx3); transition: color 0.12s ease; }
+.nav-item:hover { background: var(--fill); color: var(--tx); }
+.nav-item:hover svg { color: var(--tx2); }
+.nav-item.is-active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-1), inset 0 0 0 1px var(--card-line);
+}
+.nav-item.is-active svg { color: var(--primary); }
+.nav-item .count {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--tx3); background: var(--fill);
+  border-radius: 6px; padding: 0 6px; line-height: 18px;
+}
+.nav-item.is-active .count { background: var(--primary-soft); color: var(--primary); }
+.nav-tag {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+  color: var(--indigo); background: var(--indigo-soft);
+  border-radius: 6px; padding: 1px 6px; line-height: 16px;
+}
+
+.side-foot { margin-top: auto; padding-top: 16px; }
+.side-foot .nav-item { margin-bottom: 2px; }
+.side-user {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--indigo-soft); color: var(--indigo);
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 600;
+}
+.side-user-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.side-user-role { font-size: 11px; color: var(--tx3); line-height: 1.3; }
+
+/* ---------- 主区域 ---------- */
+.main { flex: 1; min-width: 0; }
+.panel {
+  background: var(--surface);
+  border-radius: 12px 0 0 0;
+  min-height: 100vh;
+  padding: 32px;
+}
+.panel-inner { max-width: 1200px; }
+
+/* ---------- 页头 ---------- */
+.page-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 32px; }
+.page-head h1 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; }
+.page-head .sub { margin-top: 2px; font-size: 13px; color: var(--tx2); }
+.page-head .sub .dot::before { content: "·"; margin: 0 6px; color: var(--tx3); }
+.head-actions { margin-left: auto; display: flex; gap: 8px; flex: none; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px;
+  border-radius: var(--r-ctrl);
+  font-size: 13px; font-weight: 500; line-height: 1;
+  border: 1px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.btn:focus-visible, .nav-item:focus-visible, .seg button:focus-visible, .todo:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-ghost { background: var(--surface); color: var(--tx); border-color: var(--line); }
+.btn-ghost:hover { background: var(--fill); }
+.btn-sm { height: 28px; padding: 0 10px; font-size: 12.5px; border-radius: 6px; }
+
+/* ---------- 区块头 ---------- */
+.section { margin-top: 36px; }
+.section:first-of-type { margin-top: 0; }
+.sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.sec-eyebrow {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--tx3); white-space: nowrap;
+}
+.sec-title { font-size: 16px; font-weight: 600; margin: 0; line-height: 1.4; }
+.sec-act { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.link-more { font-size: 13px; color: var(--tx2); }
+.link-more:hover { color: var(--primary); }
+
+/* ---------- 状态胶囊（Claude Code 风格：点 + 大写等宽字） ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+  padding: 2px 8px; border-radius: 999px; line-height: 18px;
+  white-space: nowrap;
+}
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill-run { color: var(--ok); background: var(--ok-soft); }
+.pill-warn { color: #B45309; background: var(--warn-soft); }
+.pill-err { color: var(--err); background: var(--err-soft); }
+.pill-idle { color: var(--tx2); background: var(--fill); }
+.pill-info { color: var(--primary); background: var(--primary-soft); }
+.pill-indigo { color: var(--indigo); background: var(--indigo-soft); }
+
+/* ---------- 01 概览：KPI ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi {
+  border: 1px solid var(--card-line); border-radius: var(--r-card);
+  padding: 20px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi:hover { border-color: var(--primary-tint); transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.kpi-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--tx3);
+}
+.kpi-row { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.kpi-num { font-size: 28px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.kpi-delta { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi-delta.up { color: var(--ok); }
+.kpi-delta.warn { color: #B45309; }
+.kpi-note { margin-top: 6px; font-size: 12px; color: var(--tx3); }
+.kpi-note strong { color: var(--tx2); font-weight: 500; }
+
+/* ---------- 01 助手输入条（CLI 风格） ---------- */
+.assistant {
+  margin-top: 16px;
+  border: 1px solid var(--card-line); border-radius: var(--r-card);
+  padding: 16px 20px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.assistant:focus-within { border-color: var(--primary-tint); box-shadow: 0 0 0 3px var(--primary-soft); }
+.assistant-line { display: flex; align-items: center; gap: 10px; }
+.assistant-prompt { font-family: var(--mono); font-size: 14px; color: var(--primary); font-weight: 600; }
+.assistant-input {
+  flex: 1; min-width: 0;
+  border: 0; outline: 0; background: none;
+  font-family: var(--mono); font-size: 13.5px; color: var(--tx);
+}
+.assistant-input::placeholder { color: var(--tx3); }
+.assistant-send { gap: 4px; font-family: var(--mono); font-size: 12px; }
+.assistant-send kbd {
+  font-family: inherit; font-size: 10px;
+  background: rgba(255,255,255,0.18); border-radius: 4px; padding: 1px 5px;
+}
+.cmd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.cmd-chip {
+  font-family: var(--mono); font-size: 12px; color: var(--tx2);
+  background: var(--bg); border: 1px solid var(--card-line);
+  border-radius: 6px; padding: 3px 10px; line-height: 20px;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.cmd-chip:hover { border-color: var(--primary-tint); color: var(--primary); background: var(--primary-soft); }
+.cmd-chip b { font-weight: 600; }
+.assistant-hint {
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--card-line);
+  font-family: var(--mono); font-size: 11px; color: var(--tx3); letter-spacing: 0.03em;
+}
+.assistant-hint span { color: var(--tx2); }
+
+/* ---------- 02 交付项目 ---------- */
+.seg {
+  display: inline-flex; gap: 2px;
+  background: var(--bg); border: 1px solid var(--card-line);
+  border-radius: 8px; padding: 2px;
+}
+.seg button {
+  border: 0; background: none; border-radius: 6px;
+  font-size: 12px; font-weight: 500; color: var(--tx2);
+  padding: 3px 10px; line-height: 18px;
+}
+.seg button:hover { color: var(--tx); }
+.seg button.on { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-1); }
+
+.proj-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.proj {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--card-line); border-radius: var(--r-card);
+  padding: 20px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.proj:hover { border-color: var(--primary-tint); transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.proj-head { display: flex; align-items: flex-start; gap: 8px; }
+.proj-name { font-size: 14px; font-weight: 600; line-height: 1.45; min-width: 0; }
+.proj-cust { font-size: 12px; color: var(--tx3); margin-top: 2px; }
+.proj-head .pill { margin-left: auto; }
+.proj-stage { margin-top: 14px; font-size: 12.5px; color: var(--tx2); }
+.proj-stage b { color: var(--tx); font-weight: 500; }
+.proj-stage .arrow { color: var(--tx3); margin: 0 4px; }
+.progress { margin-top: 10px; }
+.progress-track { height: 6px; border-radius: 999px; background: var(--fill); overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 999px; background: var(--primary); }
+.progress-bar.warn { background: var(--warn); }
+.progress-bar.err { background: var(--err); }
+.progress-meta {
+  display: flex; justify-content: space-between; margin-top: 6px;
+  font-family: var(--mono); font-size: 11px; color: var(--tx3); font-variant-numeric: tabular-nums;
+}
+.proj-meta { margin-top: 14px; display: grid; gap: 6px; font-size: 12.5px; color: var(--tx2); }
+.proj-meta li { display: flex; gap: 8px; list-style: none; }
+.proj-meta .k { flex: none; width: 56px; color: var(--tx3); }
+.proj-meta .v { min-width: 0; color: var(--tx2); }
+.proj-foot {
+  margin-top: auto; padding-top: 14px;
+  border-top: 1px solid var(--card-line);
+  font-size: 12.5px; color: var(--tx2);
+  display: flex; align-items: center; gap: 6px;
+}
+.proj-foot .tag-next {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+  color: var(--indigo); background: var(--indigo-soft);
+  border-radius: 6px; padding: 1px 6px;
+}
+.proj-foot span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-foot .go { margin-left: auto; color: var(--tx3); }
+
+/* 空态 */
+.empty {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--line); border-radius: var(--r-card);
+  padding: 48px 24px; text-align: center;
+}
+.empty-icon {
+  width: 44px; height: 44px; margin: 0 auto 12px;
+  border-radius: 10px; background: var(--primary-soft); color: var(--primary);
+  display: grid; place-items: center;
+}
+.empty h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.empty p { margin: 6px auto 16px; font-size: 13px; color: var(--tx2); max-width: 380px; }
+
+/* 加载态骨架屏 */
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.sk {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #EEF0F4 25%, #F6F7F9 50%, #EEF0F4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+.sk-proj {
+  border: 1px solid var(--card-line); border-radius: var(--r-card); padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.sk-title { height: 16px; width: 70%; }
+.sk-sub { height: 12px; width: 40%; }
+.sk-bar { height: 6px; width: 100%; border-radius: 999px; }
+.sk-line { height: 12px; width: 85%; }
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+  .kpi, .proj { transition: none; }
+}
+
+/* ---------- 03 待办与动态 ---------- */
+.signals { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start; }
+.sig-card { border: 1px solid var(--card-line); border-radius: var(--r-card); padding: 20px 24px; }
+
+.todo-list { margin: 0; padding: 0; }
+.todo {
+  display: flex; align-items: flex-start; gap: 12px;
+  width: 100%; text-align: left;
+  border: 0; background: none; padding: 12px 4px;
+  border-bottom: 1px solid var(--card-line);
+  font: inherit; color: inherit;
+  border-radius: 6px;
+}
+.todo:last-child { border-bottom: 0; }
+.todo:hover { background: var(--bg); }
+.todo input {
+  margin: 3px 0 0; width: 15px; height: 15px;
+  accent-color: var(--primary); cursor: pointer;
+}
+.todo-main { min-width: 0; flex: 1; }
+.todo-title { font-size: 13.5px; font-weight: 500; line-height: 1.5; }
+.todo.done .todo-title { color: var(--tx3); text-decoration: line-through; }
+.todo-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 3px; font-size: 12px; color: var(--tx3); }
+.todo-meta .src { font-family: var(--mono); font-size: 11px; letter-spacing: 0.03em; color: var(--tx2); background: var(--fill); border-radius: 6px; padding: 0 6px; line-height: 18px; }
+.todo-meta .due.today { color: #B45309; font-weight: 500; }
+.todo .pill { margin-top: 1px; }
+
+.feed { display: flex; flex-direction: column; }
+.feed-item { display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+.feed-item:last-child { padding-bottom: 0; }
+.feed-item::before {
+  content: ""; position: absolute; left: 4.5px; top: 16px; bottom: 2px;
+  width: 1px; background: var(--line);
+}
+.feed-item:last-child::before { display: none; }
+.feed-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; position: relative; z-index: 1; box-shadow: 0 0 0 3px var(--surface); }
+.feed-dot.ok { background: var(--ok); }
+.feed-dot.warn { background: var(--warn); }
+.feed-dot.info { background: var(--primary); }
+.feed-dot.indigo { background: var(--indigo); }
+.feed-dot.gray { background: var(--tx3); }
+.feed-body { min-width: 0; font-size: 13px; line-height: 1.55; }
+.feed-body b { font-weight: 600; }
+.feed-body .hl { color: var(--primary); }
+.feed-time { display: block; margin-top: 2px; font-family: var(--mono); font-size: 11px; color: var(--tx3); font-variant-numeric: tabular-nums; }
+
+/* ---------- 学习工作台 · CLI 开始界面 ---------- */
+.cli {
+  border: 1px solid var(--card-line); border-radius: var(--r-card);
+  transition: border-color 0.15s ease;
+}
+.cli:focus-within { border-color: var(--primary-tint); }
+.cli-title {
+  font-family: var(--mono); font-size: 17px; font-weight: 600;
+  letter-spacing: 0; margin: 0;
+}
+.cli-spark { color: var(--primary); margin-right: 2px; }
+.cli-stage { padding: 56px 32px; text-align: center; }
+.cli-ask-zh { font-size: 22px; font-weight: 600; line-height: 1.5; letter-spacing: -0.01em; }
+.cli-ask-en { margin-top: 6px; font-family: var(--mono); font-size: 13px; color: var(--tx3); }
+.cli-input-row {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 32px; padding: 12px 0 16px;
+  border-top: 1px solid var(--card-line);
+}
+.cli-config {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 32px;
+  border-top: 1px solid var(--card-line);
+  background: var(--bg);
+  border-radius: 0 0 var(--r-card) var(--r-card);
+}
+.cli-config-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--tx3);
+}
+.effort-group { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.cli-config .seg { background: var(--surface); }
+.ccswitch-group {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 10px 4px; margin-top: 2px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--tx3);
+}
+.ccswitch-group:first-child { margin-top: 0; padding-top: 6px; }
+.ccswitch-item .mid-full { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 一级：供应商行（点开展开二级模型列表） */
+.prov-group {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; text-align: left;
+  border: 0; background: none; border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; color: var(--tx); line-height: 1.4;
+  transition: background 0.12s ease;
+}
+.prov-group:hover { background: var(--bg); }
+.prov-group:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.prov-group .prov-name { font-weight: 500; }
+.prov-group .mid { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--tx3); white-space: nowrap; }
+.prov-group .chev { color: var(--tx3); font-size: 11px; transition: transform 0.15s ease; }
+.prov-group.is-exp .chev { transform: rotate(90deg); }
+#model-items .ccswitch-item { padding-left: 31px; }
+/* EFFORT 点阵切换（参照 Claude 的 Effort toggle） */
+.effort-dots {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 26px; padding: 0 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+}
+.effort-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 0; padding: 0;
+  background: var(--tx3); opacity: 0.4;
+  transition: background 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+}
+.effort-dot:hover { opacity: 0.75; }
+.effort-dot:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; opacity: 0.75; }
+.effort-dot.on { background: var(--primary); opacity: 1; box-shadow: 0 0 0 3px var(--primary-soft); }
+.pf-model-row { display: flex; gap: 8px; }
+.pf-model-row input { flex: 1; min-width: 0; }
+.pf-models {
+  margin-top: 8px; border: 1px solid var(--card-line); border-radius: 8px;
+  max-height: 180px; overflow-y: auto; background: var(--surface);
+}
+.pf-model-item {
+  display: block; width: 100%; text-align: left;
+  border: 0; background: none;
+  font-family: var(--mono); font-size: 12px; color: var(--tx2);
+  padding: 7px 12px; line-height: 1.4;
+}
+.pf-model-item:hover { background: var(--bg); color: var(--tx); }
+.pf-model-item.on { color: var(--primary); background: var(--primary-soft); }
+
+/* 模型切换器（CC Switch 模式）：当前供应商/模型 + 向上展开的切换菜单 */
+.ccswitch { position: relative; }
+.ccswitch-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctrl);
+  font-size: 13px; font-weight: 500; color: var(--tx); line-height: 1;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.ccswitch-btn:hover { background: var(--fill); }
+.ccswitch-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ccswitch-btn > svg { color: var(--tx3); }
+.ccswitch-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.d-blue { background: var(--primary); }
+.d-indigo { background: var(--indigo); }
+.d-green { background: var(--ok); }
+.d-amber { background: var(--warn); }
+.ccswitch-model { font-family: var(--mono); font-size: 12px; color: var(--tx3); }
+.ccswitch-menu {
+  position: absolute; left: 0;
+  min-width: 300px; max-height: 440px; overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.10);
+  padding: 6px; z-index: 30;
+}
+.ccswitch-menu.open-down { top: calc(100% + 8px); bottom: auto; }
+.ccswitch-menu.open-up { bottom: calc(100% + 8px); top: auto; }
+/* 开始练习后的会话状态条 */
+.learn-status {
+  margin: 16px 32px 0; padding: 10px 14px;
+  border: 1px solid var(--primary-tint); border-radius: 8px;
+  background: var(--primary-soft); color: var(--primary);
+  font-size: 13px; line-height: 1.55;
+}
+.learn-status b { font-weight: 600; }
+.learn-status.is-warn { border-color: rgba(245, 158, 11, 0.35); background: var(--warn-soft); color: #B45309; }
+/* 二级：展开的模型列表，只露出 3 行，其余滚动查看 */
+.model-sub { max-height: 102px; overflow-y: auto; margin: 2px 0; }
+.ccswitch-item {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; text-align: left;
+  border: 0; background: none; border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; color: var(--tx); line-height: 1.4;
+  transition: background 0.12s ease;
+}
+.ccswitch-item:hover { background: var(--bg); }
+.ccswitch-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.ccswitch-item .prov { font-weight: 500; }
+.ccswitch-item .mid { font-family: var(--mono); font-size: 12px; color: var(--tx3); }
+.ccswitch-item .check { margin-left: auto; color: var(--primary); visibility: hidden; }
+.ccswitch-item.is-active .check { visibility: visible; }
+.ccswitch-foot {
+  margin-top: 6px; padding: 8px 10px;
+  border-top: 1px solid var(--card-line);
+  font-size: 12.5px; color: var(--tx2);
+  width: calc(100% - 20px); text-align: left;
+  border: 0; background: none; border-radius: 6px;
+}
+.ccswitch-foot:hover { color: var(--primary); background: var(--bg); }
+
+/* ---------- 设置 · 模型管理 ---------- */
+.settings { display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: start; }
+.settings-nav { position: sticky; top: 24px; }
+.settings-nav .nav-item { margin-bottom: 2px; }
+.settings-nav .nav-item[disabled] { color: var(--tx3); cursor: default; }
+.settings-nav .nav-item[disabled]:hover { background: none; }
+.settings-desc { margin: 0 0 20px; font-size: 13px; color: var(--tx2); max-width: 660px; }
+.prov-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; margin-bottom: 10px;
+  border: 1px solid var(--card-line); border-radius: var(--r-card);
+  background: var(--surface);
+  transition: border-color 0.15s ease;
+}
+.prov-row:hover { border-color: var(--primary-tint); }
+.prov-row.is-active { border-color: var(--primary-tint); box-shadow: var(--shadow-1); }
+.prov-info { min-width: 0; flex: 1; }
+.prov-name { font-size: 13.5px; font-weight: 600; }
+.prov-type {
+  font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: 0.04em;
+  color: var(--tx3); border: 1px solid var(--card-line);
+  border-radius: 6px; padding: 0 5px; margin-left: 8px; vertical-align: 1px;
+}
+.prov-url {
+  font-family: var(--mono); font-size: 11.5px; color: var(--tx3); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prov-model {
+  font-family: var(--mono); font-size: 11.5px; color: var(--tx2);
+  background: var(--fill); border-radius: 6px; padding: 2px 8px; white-space: nowrap;
+}
+.prov-acts { display: flex; gap: 2px; flex: none; }
+.act-btn {
+  border: 0; background: none;
+  font-size: 12.5px; color: var(--tx2);
+  padding: 5px 8px; border-radius: 6px; line-height: 1.2;
+}
+.act-btn:hover { background: var(--fill); color: var(--tx); }
+.act-btn.danger:hover { background: var(--err-soft); color: var(--err); }
+.act-btn.confirm { color: var(--err); font-weight: 600; background: var(--err-soft); }
+
+/* 供应商编辑弹窗 */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 23, 42, 0.4);
+  display: grid; place-items: center; padding: 24px;
+}
+.modal {
+  width: 500px; max-width: 100%; max-height: 90vh; overflow-y: auto;
+  background: var(--surface); border-radius: var(--r-card);
+  box-shadow: 0 8px 32px rgba(16, 24, 40, 0.16);
+  padding: 24px;
+}
+.modal-head { display: flex; align-items: center; margin-bottom: 16px; }
+.modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.modal-x {
+  margin-left: auto; border: 0; background: none;
+  color: var(--tx3); font-size: 18px; line-height: 1;
+  padding: 4px 8px; border-radius: 6px;
+}
+.modal-x:hover { background: var(--fill); color: var(--tx); }
+.pf-field { display: block; margin-bottom: 14px; }
+.pf-field > span { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.pf-field input {
+  width: 100%; height: 34px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: var(--r-ctrl);
+  font: inherit; font-size: 13px; color: var(--tx);
+}
+.pf-field input::placeholder { color: var(--tx3); }
+.pf-field input:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.pf-hint { margin: 6px 0 0; font-family: var(--mono); font-size: 11.5px; color: var(--tx3); }
+.pf-preview {
+  margin: 4px 0 14px; padding: 12px 14px;
+  background: var(--bg); border: 1px solid var(--card-line); border-radius: 8px;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--tx2);
+  overflow-x: auto; white-space: nowrap;
+}
+.pf-preview b { color: var(--tx); font-weight: 600; }
+.modal-foot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid var(--card-line);
+}
+.pf-test { margin-right: auto; font-family: var(--mono); font-size: 12px; }
+.pf-test.ok { color: var(--ok); }
+.pf-test.warn { color: #B45309; }
+.pf-test.loading { color: var(--tx3); }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1160px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .proj-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .app { flex-direction: column; }
+  .sidebar { position: static; height: auto; width: 100%; padding-bottom: 4px; }
+  .side-foot { margin-top: 12px; }
+  .side-user { border-top: 0; padding-top: 4px; }
+  .panel { border-radius: 12px; min-height: 0; margin-bottom: 16px; padding: 24px; }
+  .page-head { flex-wrap: wrap; }
+  .head-actions { margin-left: 0; }
+  .proj-grid, .kpi-grid, .signals { grid-template-columns: 1fr; }
+  .settings { grid-template-columns: 1fr; gap: 24px; }
+  .settings-nav { position: static; display: flex; flex-wrap: wrap; }
+  .settings-nav .nav-label { width: 100%; }
+  .prov-row { flex-wrap: wrap; }
+  .prov-model { order: 5; }
+}
+</style>
+
+<div class="app">
+
+  <!-- ======================= 侧边栏 ======================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">F</div>
+      <div>
+        <div class="brand-name">FDE 工作台</div>
+        <div class="brand-sub">交付现场的一线工程台</div>
+      </div>
+    </div>
+
+    <nav>
+      <div class="nav-group" style="margin-top:0">
+        <div class="nav-label">Workspace</div>
+        <button class="nav-item is-active" data-view="home">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+          工作台首页
+        </button>
+        <button class="nav-item" data-view="learning">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h13v13H6a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h13"/><path d="M9 8h6"/></svg>
+          学习工作台
+          <span class="nav-tag">NEW</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="side-foot">
+      <button class="nav-item" data-view="settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+        设置
+      </button>
+      <div class="side-user">
+        <div class="avatar">V</div>
+        <div>
+          <div class="side-user-name">Vigo</div>
+          <div class="side-user-role">华东区 · FDE</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ======================= 主面板 ======================= -->
+  <main class="main">
+    <div class="panel">
+      <div class="panel-inner">
+
+      <div id="view-home">
+
+        <!-- 页头 -->
+        <header class="page-head">
+          <div>
+            <h1>早上好，Vigo</h1>
+            <div class="sub">10 月 15 日 周四<span class="dot"></span>今天有 <b style="font-weight:600">2</b> 个部署窗口<span class="dot"></span>3 项待办今天到期</div>
+          </div>
+        </header>
+
+        <!-- ============ 01 / OVERVIEW ============ -->
+        <section class="section">
+          <div class="sec-head">
+            <span class="sec-eyebrow">01 / OVERVIEW</span>
+            <h2 class="sec-title">今日概览</h2>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <div class="kpi-label">进行中项目</div>
+              <div class="kpi-row"><span class="kpi-num">12</span><span class="kpi-delta up">▲ 较上周 +2</span></div>
+              <div class="kpi-note">其中 <strong>4</strong> 个进入验收阶段</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">待客户验收</div>
+              <div class="kpi-row"><span class="kpi-num">4</span><span class="kpi-delta">最早截止 10-18</span></div>
+              <div class="kpi-note">蓝湖制造验收会已约定周五</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">本周部署窗口</div>
+              <div class="kpi-row"><span class="kpi-num">6</span><span class="kpi-delta">已完成 2</span></div>
+              <div class="kpi-note">下一个：今晚 22:00 瑞泰灰度</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">风险项</div>
+              <div class="kpi-row"><span class="kpi-num">2</span><span class="kpi-delta warn">▲ 新增 1</span></div>
+              <div class="kpi-note">启程物流接口联调延迟 3 天</div>
+            </div>
+          </div>
+
+          <!-- FDE 助手 · CLI 风格输入 -->
+          <div class="assistant">
+            <div class="assistant-line">
+              <span class="assistant-prompt">›</span>
+              <input class="assistant-input" id="assistant-input" type="text"
+                     placeholder="向 FDE Copilot 描述任务，或输入 / 选择指令…" autocomplete="off">
+              <button class="btn btn-primary btn-sm assistant-send">发送 <kbd>⏎</kbd></button>
+            </div>
+            <div class="cmd-chips">
+              <button class="cmd-chip"><b>/部署检查</b> 瑞泰 · 今晚灰度前置巡检</button>
+              <button class="cmd-chip"><b>/生成周报</b> 按项目聚合本周进展</button>
+              <button class="cmd-chip"><b>/环境巡检</b> 全部 8 个生产环境</button>
+              <button class="cmd-chip"><b>/迁移方案</b> 从模板生成数据迁移计划</button>
+            </div>
+            <div class="assistant-hint">↑ 翻阅历史指令 &nbsp;·&nbsp; <span>Tab</span> 补全指令 &nbsp;·&nbsp; 上下文：当前 3 个项目已挂载</div>
+          </div>
+        </section>
+
+        <!-- ============ 02 / DELIVERY ============ -->
+        <section class="section">
+          <div class="sec-head">
+            <span class="sec-eyebrow">02 / DELIVERY</span>
+            <h2 class="sec-title">进行中的交付</h2>
+            <div class="sec-act">
+              <div class="seg" role="group" aria-label="视图状态切换">
+                <button class="on" data-state="data">数据</button>
+                <button data-state="empty">空态</button>
+                <button data-state="loading">加载中</button>
+              </div>
+              <a class="link-more" href="#">全部项目 →</a>
+            </div>
+          </div>
+
+          <!-- 数据态 -->
+          <div class="proj-grid" id="proj-data">
+            <article class="proj">
+              <div class="proj-head">
+                <div class="proj-name">瑞泰零售 · 全渠道中台
+                  <div class="proj-cust">瑞泰零售集团 · 华东</div>
+                </div>
+                <span class="pill pill-run">RUNNING</span>
+              </div>
+              <div class="proj-stage">阶段：<b>UAT 验证</b><span class="arrow">→</span>上线割接</div>
+              <div class="progress">
+                <div class="progress-track"><div class="progress-bar" style="width:72%"></div></div>
+                <div class="progress-meta"><span>整体进度</span><span>72%</span></div>
+              </div>
+              <ul class="proj-meta">
+                <li><span class="k">到期</span><span class="v">10-24（还剩 9 天）</span></li>
+                <li><span class="k">环境</span><span class="v">8 / 9 就绪，UAT 待复验</span></li>
+              </ul>
+              <div class="proj-foot"><span class="tag-next">NEXT</span><span>今晚 22:00 灰度发布前置检查</span><span class="go">→</span></div>
+            </article>
+
+            <article class="proj">
+              <div class="proj-head">
+                <div class="proj-name">蓝湖制造 · 设备数据平台
+                  <div class="proj-cust">蓝湖智造 · 苏州二期</div>
+                </div>
+                <span class="pill pill-warn">REVIEW</span>
+              </div>
+              <div class="proj-stage">阶段：<b>客户验收</b><span class="arrow">→</span>终验归档</div>
+              <div class="progress">
+                <div class="progress-track"><div class="progress-bar warn" style="width:90%"></div></div>
+                <div class="progress-meta"><span>整体进度</span><span>90%</span></div>
+              </div>
+              <ul class="proj-meta">
+                <li><span class="k">到期</span><span class="v">10-18（还剩 3 天）</span></li>
+                <li><span class="k">验收</span><span class="v">周五 14:00 验收会，等客户签字</span></li>
+              </ul>
+              <div class="proj-foot"><span class="tag-next">NEXT</span><span>补齐验收材料：性能压测报告 v2</span><span class="go">→</span></div>
+            </article>
+
+            <article class="proj">
+              <div class="proj-head">
+                <div class="proj-name">启程物流 · 运单追踪系统
+                  <div class="proj-cust">启程速运 · 全国干线</div>
+                </div>
+                <span class="pill pill-err">AT RISK</span>
+              </div>
+              <div class="proj-stage">阶段：<b>数据迁移</b><span class="arrow">→</span>试运行</div>
+              <div class="progress">
+                <div class="progress-track"><div class="progress-bar err" style="width:45%"></div></div>
+                <div class="progress-meta"><span>整体进度</span><span>45%</span></div>
+              </div>
+              <ul class="proj-meta">
+                <li><span class="k">到期</span><span class="v">11-05（已延期风险）</span></li>
+                <li><span class="k">阻塞</span><span class="v">客户运单接口联调延迟 3 天</span></li>
+              </ul>
+              <div class="proj-foot"><span class="tag-next">NEXT</span><span>今天 16:00 与客户接口人对齐排期</span><span class="go">→</span></div>
+            </article>
+          </div>
+
+          <!-- 空态 -->
+          <div class="proj-grid" id="proj-empty" hidden>
+            <div class="empty">
+              <div class="empty-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+              </div>
+              <h3>还没有进行中的交付项目</h3>
+              <p>可以从方案模板新建一份交付计划，也可以直接关联 CRM 商机，一键生成项目与环境清单。</p>
+              <button class="btn btn-primary">新建交付项目</button>
+            </div>
+          </div>
+
+          <!-- 加载态（骨架屏） -->
+          <div class="proj-grid" id="proj-loading" hidden aria-busy="true">
+            <div class="sk-proj">
+              <div class="sk sk-title"></div><div class="sk sk-sub"></div>
+              <div class="sk sk-bar"></div>
+              <div class="sk sk-line"></div><div class="sk sk-line" style="width:60%"></div>
+            </div>
+            <div class="sk-proj">
+              <div class="sk sk-title" style="width:55%"></div><div class="sk sk-sub"></div>
+              <div class="sk sk-bar"></div>
+              <div class="sk sk-line" style="width:75%"></div><div class="sk sk-line" style="width:50%"></div>
+            </div>
+            <div class="sk-proj">
+              <div class="sk sk-title" style="width:65%"></div><div class="sk sk-sub"></div>
+              <div class="sk sk-bar"></div>
+              <div class="sk sk-line" style="width:80%"></div><div class="sk sk-line" style="width:45%"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 03 / SIGNALS ============ -->
+        <section class="section">
+          <div class="sec-head">
+            <span class="sec-eyebrow">03 / SIGNALS</span>
+            <h2 class="sec-title">待办与动态</h2>
+            <div class="sec-act"><a class="link-more" href="#">全部待办 →</a></div>
+          </div>
+
+          <div class="signals">
+            <!-- 待办 -->
+            <div class="sig-card">
+              <div class="todo-list">
+                <button class="todo">
+                  <input type="checkbox" aria-label="标记完成">
+                  <span class="todo-main">
+                    <span class="todo-title">输出瑞泰 UAT 缺陷复验报告（21 → 3 条待关闭）</span>
+                    <span class="todo-meta"><span class="due today">今天 18:00</span><span class="src">交付项目</span></span>
+                  </span>
+                  <span class="pill pill-run">P0</span>
+                </button>
+                <button class="todo">
+                  <input type="checkbox" aria-label="标记完成">
+                  <span class="todo-main">
+                    <span class="todo-title">与蓝湖确认验收签字流程与电子章事宜</span>
+                    <span class="todo-meta"><span class="due today">明天 14:00</span><span class="src">交付项目</span></span>
+                  </span>
+                  <span class="pill pill-warn">P1</span>
+                </button>
+                <button class="todo">
+                  <input type="checkbox" aria-label="标记完成">
+                  <span class="todo-main">
+                    <span class="todo-title">更新启程物流接口联调排期，同步风险至项目群</span>
+                    <span class="todo-meta"><span>10-17</span><span class="src">交付项目</span></span>
+                  </span>
+                  <span class="pill pill-warn">P1</span>
+                </button>
+                <button class="todo">
+                  <input type="checkbox" aria-label="标记完成">
+                  <span class="todo-main">
+                    <span class="todo-title">提交「多租户配置基线 v1.2」方案模板进入评审</span>
+                    <span class="todo-meta"><span>10-18</span><span class="src">方案模板</span></span>
+                  </span>
+                  <span class="pill pill-idle">P2</span>
+                </button>
+                <button class="todo">
+                  <input type="checkbox" aria-label="标记完成">
+                  <span class="todo-main">
+                    <span class="todo-title">复盘上周环境巡检 12 条告警，沉淀到知识库</span>
+                    <span class="todo-meta"><span>10-19</span><span class="src">客户环境</span></span>
+                  </span>
+                  <span class="pill pill-idle">P2</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 动态 -->
+            <div class="sig-card">
+              <div class="feed">
+                <div class="feed-item">
+                  <span class="feed-dot ok"></span>
+                  <div class="feed-body">
+                    <b>#4821 灰度发布</b>完成，蓝湖设备平台生产环境 20% 流量运行正常
+                    <span class="feed-time">16:42 · 部署任务</span>
+                  </div>
+                </div>
+                <div class="feed-item">
+                  <span class="feed-dot gray"></span>
+                  <div class="feed-body">
+                    <b>王一舟</b>更新了启程物流里程碑计划，试运行节点顺延至 11-05
+                    <span class="feed-time">14:05 · 交付项目</span>
+                  </div>
+                </div>
+                <div class="feed-item">
+                  <span class="feed-dot warn"></span>
+                  <div class="feed-body">
+                    环境巡检发现 <b>2 条告警</b>：瑞泰 UAT 数据库连接池接近上限
+                    <span class="feed-time">11:30 · 客户环境</span>
+                  </div>
+                </div>
+                <div class="feed-item">
+                  <span class="feed-dot indigo"></span>
+                  <div class="feed-body">
+                    学习工作台：<span class="hl">「K8s 存储卷排障实战」</span>进度 80%，还剩 2 节
+                    <span class="feed-time">09:15 · 学习工作台</span>
+                  </div>
+                </div>
+                <div class="feed-item">
+                  <span class="feed-dot info"></span>
+                  <div class="feed-body">
+                    FDE Copilot 生成了<b>瑞泰割接演练清单</b>，等待你确认后下发
+                    <span class="feed-time">08:47 · FDE 助手</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /view-home -->
+
+      <!-- ============ 学习工作台视图（Claude Code CLI 开始界面风格） ============ -->
+      <div id="view-learning" hidden>
+        <!-- 顶部标签：Welcome -->
+        <header class="page-head">
+          <h1 class="cli-title"><span class="cli-spark">✻</span> Welcome to 学习工作台</h1>
+        </header>
+
+        <section class="cli">
+          <!-- 内容区：初始仅双语提问 -->
+          <div class="cli-stage">
+            <div class="cli-ask-zh">今天你要学习什么知识点？</div>
+            <div class="cli-ask-en">What do you want to learn today?</div>
+          </div>
+
+          <!-- 会话状态条：开始练习后显示 -->
+          <div class="learn-status" id="learning-status" hidden></div>
+
+          <!-- 输入区 -->
+          <div class="cli-input-row">
+            <span class="assistant-prompt">›</span>
+            <input class="assistant-input" id="learning-input" type="text"
+                   placeholder="描述你的学习目标 · Describe your learning goal" autocomplete="off">
+            <button class="btn btn-primary cli-submit">开始 <kbd style="font-family:inherit;font-size:10px;background:rgba(255,255,255,.18);border-radius:4px;padding:1px 5px">⏎</kbd></button>
+          </div>
+
+          <!-- 选项配置区：当前仅模型切换（CC Switch 模式）；
+               架构预留：MCP 管理 / Skill 管理后续作为同级入口挂在此配置条 -->
+          <div class="cli-config">
+            <span class="cli-config-label">MODEL</span>
+            <div class="ccswitch">
+              <button class="ccswitch-btn" id="model-switch-btn" aria-haspopup="listbox" aria-expanded="false">
+                <span class="ccswitch-dot d-blue" id="model-current-dot"></span>
+                <span class="ccswitch-model" id="model-current-id">claude-opus-5.5</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div class="ccswitch-menu" id="model-menu" role="listbox" aria-label="选择模型供应商" hidden>
+                <div id="model-items"></div>
+                <button class="ccswitch-foot" id="model-manage">＋ 添加供应商配置</button>
+              </div>
+            </div>
+            <span class="effort-group">
+              <span class="cli-config-label">EFFORT&nbsp;(<span id="effort-current">中</span>)</span>
+              <div class="effort-dots" id="effort-dots" role="radiogroup" aria-label="模型强度档位"></div>
+            </span>
+          </div>
+        </section>
+      </div><!-- /view-learning -->
+
+      <!-- ============ 设置视图（当前仅模型管理） ============ -->
+      <div id="view-settings" hidden>
+        <header class="page-head">
+          <h1>设置</h1>
+        </header>
+
+        <div class="settings">
+          <!-- 子导航：模型管理可用；MCP / Skill 按后续架构预留 -->
+          <aside class="settings-nav">
+            <div class="nav-label">通用</div>
+            <button class="nav-item is-active">模型管理</button>
+            <button class="nav-item" disabled>MCP 管理<span class="nav-tag">SOON</span></button>
+            <button class="nav-item" disabled>Skill 管理<span class="nav-tag">SOON</span></button>
+          </aside>
+
+          <div class="settings-body">
+            <div class="sec-head">
+              <span class="sec-eyebrow">SETTINGS / PROVIDERS</span>
+              <h2 class="sec-title">模型管理</h2>
+              <div class="sec-act">
+                <button class="btn btn-primary btn-sm" id="prov-add">＋ 添加供应商</button>
+              </div>
+            </div>
+            <p class="settings-desc">配置学习工作台使用的模型供应商：官方 API 直连，或任意兼容 Anthropic 协议的第三方中转（CC Switch 同款流程，只切换端点、Key 与模型三要素）。API Key 保存在本机后端 <b>.fde-data/providers.json</b>（权限 0600），页面与前端拿不到完整 Key，只能看到尾号；模型列表可从供应商接口一键拉取后点选。</p>
+            <div id="prov-list"></div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 添加 / 编辑供应商弹窗 -->
+<div class="modal-overlay" id="prov-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prov-modal-title">
+    <div class="modal-head">
+      <h3 id="prov-modal-title">添加供应商</h3>
+      <button class="modal-x" id="pf-close" aria-label="关闭">✕</button>
+    </div>
+    <form id="prov-form">
+      <label class="pf-field">
+        <span>配置名称</span>
+        <input id="pf-name" required placeholder="例如：Claude 官方 / 某中转·旗舰档">
+      </label>
+      <div class="pf-field">
+        <span>类型</span>
+        <div class="seg" id="pf-type" role="group" aria-label="供应商类型">
+          <button type="button" class="on" data-t="official">官方 API</button>
+          <button type="button" data-t="relay">第三方 API</button>
+        </div>
+      </div>
+      <label class="pf-field">
+        <span>接口地址（Base URL）</span>
+        <input id="pf-url" placeholder="https://api.anthropic.com">
+        <p class="pf-hint" id="pf-url-hint">官方直连地址，一般无需修改。</p>
+      </label>
+      <label class="pf-field">
+        <span>API Key</span>
+        <input id="pf-key" type="password" placeholder="sk-ant-...">
+        <p class="pf-hint" id="pf-key-hint">官方 Key 在 console.anthropic.com 创建。</p>
+      </label>
+      <label class="pf-field">
+        <span>模型列表地址（可选）</span>
+        <input id="pf-modelsurl" placeholder="留空 = 接口地址 + /v1/models">
+        <p class="pf-hint">部分中转的模型列表不在默认地址，需单独填写。</p>
+      </label>
+      <label class="pf-field">
+        <span>默认模型</span>
+        <div class="pf-model-row">
+          <input id="pf-model" placeholder="claude-opus-4-6">
+          <button type="button" class="btn btn-ghost btn-sm" id="pf-fetch">获取模型列表</button>
+        </div>
+        <div class="pf-models" id="pf-models" hidden></div>
+        <p class="pf-hint">从供应商模型列表接口拉取（Key 由后端代理使用，不回传前端），点击直接选用。</p>
+      </label>
+      <div class="pf-field">
+        <span>配置预览</span>
+        <div class="pf-preview" id="pf-preview"></div>
+        <p class="pf-hint">启用该配置时写入模型连接三要素：端点、Key、模型。</p>
+      </div>
+      <div class="modal-foot">
+        <span class="pf-test" id="pf-test-result"></span>
+        <button type="button" class="btn btn-ghost" id="pf-test">测试连接</button>
+        <button type="button" class="btn btn-ghost" id="pf-cancel">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ==================== 后端接口（Key 只存在本地后端，前端仅拿脱敏数据） ====================
+function api(method, url, body) {
+  return fetch(url, {
+    method: method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) {
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      return j;
+    });
+  });
+}
+
+var providers = [];
+var activeId = null;
+function findProv(id) {
+  var r = null;
+  providers.forEach(function (p) { if (p.id === id) r = p; });
+  return r;
+}
+function esc(v) {
+  return String(v).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function loadProviders() {
+  return api('GET', '/api/providers').then(function (d) {
+    providers = d.providers;
+    activeId = d.activeId;
+    renderAll();
+    // 已配 Key 但还没有模型缓存的供应商，自动拉一次全量模型列表
+    providers.forEach(function (p) {
+      if (p.hasKey && (!p.models || !p.models.length)) {
+        api('GET', '/api/providers/' + p.id + '/models').then(function (r) {
+          p.models = r.models;
+          if (!p.model) p.model = r.models[0];
+          renderAll();
+        }).catch(function () {});
+      }
+    });
+  }).catch(function () {
+    // 本地后端未启动
+    providers = []; activeId = null; renderAll();
+    document.getElementById('prov-list').innerHTML =
+      '<div class="empty"><div class="empty-icon">'
+      + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 7-7"/><rect x="3" y="12" width="4" height="6" rx="1.5"/><rect x="17" y="12" width="4" height="6" rx="1.5"/><path d="M19 18a3 3 0 0 1-3 3h-3"/></svg>'
+      + '</div><h3>本地服务未启动</h3><p>模型配置与 API Key 保存在本机后端，请先在项目目录运行 <b>node fde-workbench-server.js</b>，再访问 <b>http://127.0.0.1:7842</b>。</p></div>';
+  });
+}
+
+// ---------- 设置页：供应商列表 ----------
+function renderProvList() {
+  document.getElementById('prov-list').innerHTML = providers.map(function (p) {
+    var isActive = p.id === activeId;
+    var status = isActive ? '<span class="pill pill-run">启用中</span>'
+      : (p.hasKey ? '<span class="pill pill-idle">就绪</span>' : '<span class="pill pill-warn">未配置 Key</span>');
+    return '<div class="prov-row' + (isActive ? ' is-active' : '') + '" data-id="' + p.id + '">'
+      + '<span class="ccswitch-dot d-' + p.color + '"></span>'
+      + '<div class="prov-info">'
+      +   '<div class="prov-name">' + esc(p.name) + '<span class="prov-type">' + (p.type === 'official' ? '官方' : '第三方') + '</span></div>'
+      +   '<div class="prov-url">' + esc(p.baseUrl) + (p.hasKey ? ' · Key ••••' + esc(p.keyTail) : '') + '</div>'
+      + '</div>'
+      + '<span class="prov-model">' + esc(p.model || '—') + '</span>'
+      + status
+      + '<div class="prov-acts">'
+      +   (isActive ? '' : '<button class="act-btn" data-act="enable">启用</button>')
+      +   '<button class="act-btn" data-act="edit">编辑</button>'
+      +   '<button class="act-btn danger" data-act="del"' + (isActive ? ' disabled title="正在启用的配置不可删除，请先切换"' : '') + '>删除</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+// ---------- 学习工作台：MODEL（一级供应商 → 二级全量模型） + EFFORT（点阵档位） ----------
+var msBtn = document.getElementById('model-switch-btn');
+var msMenu = document.getElementById('model-menu');
+var msItems = document.getElementById('model-items');
+var effortDotsEl = document.getElementById('effort-dots');
+var EFFORT_NAMES = { minimal: '最低', low: '低', medium: '中', high: '高', max: '最大' };
+var EFFORT_META = {
+  minimal: { name: '最低 · Minimal', desc: '几乎不推理，最快最省，适合格式化与改写' },
+  low:     { name: '低 · Low',       desc: '响应快，消耗少，适合简单问答' },
+  medium:  { name: '中 · Medium',    desc: '默认档位，速度与深度均衡' },
+  high:    { name: '高 · High',      desc: '深度推理，适合复杂排查与方案设计' },
+  max:     { name: '最大 · Max',     desc: '火力全开，最长思考预算，攻坚最难任务' }
+};
+// 展示层：数字版本号的连字符转点（claude-opus-5-5 → claude-opus-5.5）；API 仍用原始 id
+function prettyModel(m) {
+  return String(m).replace(/-(\d+(?:-\d+)+)$/, function (_, v) { return '-' + v.split('-').join('.'); });
+}
+// 排序：官方能力强弱（fable > opus > sonnet > haiku > 其他），同家族版本号新的在前
+function modelTier(m) {
+  var s = String(m).toLowerCase();
+  if (s.indexOf('fable') > -1) return 0;
+  if (s.indexOf('opus') > -1) return 1;
+  if (s.indexOf('sonnet') > -1) return 2;
+  if (s.indexOf('haiku') > -1) return 3;
+  return 4;
+}
+function modelVersion(m) {
+  var t = String(m).match(/(\d+(?:-\d+)*)$/);
+  return t ? t[1].split('-').map(Number) : [];
+}
+function cmpModels(a, b) {
+  var d = modelTier(a) - modelTier(b);
+  if (d) return d;
+  var va = modelVersion(a), vb = modelVersion(b);
+  for (var i = 0; i < Math.max(va.length, vb.length); i++) {
+    var dd = (va[i] || 0) - (vb[i] || 0);
+    if (dd) return -dd;
+  }
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+var expandedProvId = null; // null → 默认展开当前启用的供应商
+
+function renderMenu() {
+  var expanded = expandedProvId || activeId;
+  msItems.innerHTML = providers.map(function (p) {
+    var models = (p.models && p.models.length) ? p.models.slice().sort(cmpModels) : [p.model || '默认模型'];
+    var isExp = p.id === expanded;
+    var row = '<button class="prov-group' + (isExp ? ' is-exp' : '') + '" data-prov="' + p.id + '" title="' + esc(p.name) + '（点击展开全部模型）">'
+      + '<span class="ccswitch-dot d-' + p.color + '"></span>'
+      + '<span class="prov-name">' + esc(p.name) + '</span>'
+      + '<span class="mid">' + (p.models && p.models.length ? p.models.length + ' 个模型' : '未拉取列表') + '</span>'
+      + '<span class="chev">▸</span></button>';
+    if (!isExp) return row;
+    // 二级：展开供应商的全量模型，超出部分在 .model-sub 内滚动
+    return row + '<div class="model-sub">' + models.map(function (m) {
+      var isCur = p.id === activeId && m === p.model;
+      return '<button class="ccswitch-item' + (isCur ? ' is-active' : '') + '" role="option" data-id="' + p.id + '" data-model="' + esc(m) + '">'
+        + '<span class="mid mid-full">' + esc(prettyModel(m)) + '</span>'
+        + '<span class="check">✓</span></button>';
+    }).join('') + '</div>';
+  }).join('');
+  var cur = findProv(activeId);
+  if (cur) {
+    document.getElementById('model-current-id').textContent = cur.model ? prettyModel(cur.model) : '';
+    document.getElementById('model-current-dot').className = 'ccswitch-dot d-' + cur.color;
+  }
+  // EFFORT：档位随模型动态生成（服务端按模型名给出），点阵切换
+  var opts = (cur && cur.effortOptions && cur.effortOptions.length) ? cur.effortOptions : ['low', 'medium', 'high'];
+  var effort = cur ? (cur.effort || 'medium') : 'medium';
+  if (opts.indexOf(effort) === -1) effort = opts.indexOf('medium') > -1 ? 'medium' : opts[Math.floor(opts.length / 2)];
+  if (cur) cur.effort = effort;
+  effortDotsEl.innerHTML = opts.map(function (lv) {
+    var meta = EFFORT_META[lv] || { name: lv, desc: '' };
+    return '<button class="effort-dot' + (lv === effort ? ' on' : '') + '" role="radio" aria-checked="' + (lv === effort) + '" data-e="' + lv + '" title="' + esc(meta.name) + '：' + esc(meta.desc) + '"></button>';
+  }).join('');
+  document.getElementById('effort-current').textContent = EFFORT_NAMES[effort] || effort;
+}
+function renderAll() { renderProvList(); renderMenu(); }
+
+function closeMenus() {
+  msMenu.hidden = true;
+  msBtn.setAttribute('aria-expanded', 'false');
+}
+// 展开方向：固定在按钮下方展开；下方空间不足时压缩限高（最低 240px），保证可用
+function positionMenu() {
+  msMenu.classList.remove('open-down', 'open-up');
+  var rect = msBtn.getBoundingClientRect();
+  var down = window.innerHeight - rect.bottom - 8;
+  msMenu.style.maxHeight = Math.min(440, Math.max(240, down)) + 'px';
+  msMenu.classList.add('open-down');
+}
+msBtn.addEventListener('click', function (e) {
+  e.stopPropagation();
+  var willOpen = msMenu.hidden;
+  closeMenus();
+  msMenu.hidden = !willOpen;
+  msBtn.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) {
+    expandedProvId = null; // 每次打开默认展开当前启用的供应商
+    positionMenu();
+    var first = msMenu.querySelector('button:not([disabled])');
+    if (first) first.focus();
+  }
+});
+// 页面滚动/改窗口大小时收起菜单（菜单内部滚动除外）
+window.addEventListener('scroll', function (e) {
+  if (!msMenu.hidden && !msMenu.contains(e.target)) closeMenus();
+}, true);
+window.addEventListener('resize', closeMenus);
+// Claude 菜单交互：↑↓ 在选项间移动，Enter 选中，Esc 关闭
+function bindMenuKeys(menu) {
+  menu.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    var items = Array.prototype.slice.call(menu.querySelectorAll('button:not([disabled])'));
+    var i = items.indexOf(document.activeElement);
+    i = i === -1 ? 0 : (e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length);
+    items[i].focus();
+    e.preventDefault();
+  });
+}
+bindMenuKeys(msMenu);
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.ccswitch')) closeMenus();
+});
+
+// 一级：点供应商行展开它的二级模型列表（不收起，切换到另一个供应商才移动展开位）
+// 二级：点具体模型 = 启用该供应商并把该模型设为当前模型，菜单保持打开便于连续切换
+// 注意：重渲染会让点击元素脱离 DOM，必须 stopPropagation，
+// 否则冒泡到 document 时 closest('.ccswitch') 变 null，会被误关
+msItems.addEventListener('click', function (e) {
+  e.stopPropagation();
+  var g = e.target.closest('.prov-group');
+  if (g) {
+    expandedProvId = g.dataset.prov;
+    renderMenu();
+    positionMenu();
+    return;
+  }
+  var it = e.target.closest('.ccswitch-item');
+  if (!it) return;
+  var id = it.dataset.id;
+  var model = it.dataset.model;
+  activeId = id;
+  var p = findProv(id);
+  if (p) p.model = model;
+  renderAll();
+  positionMenu();
+  api('POST', '/api/providers/' + id + '/enable').catch(function () {});
+  if (model) {
+    api('PUT', '/api/providers/' + id, { model: model }).then(function (d) {
+      // 模型变了，档位选项随服务端返回一起刷新
+      providers = providers.map(function (x) { return x.id === d.provider.id ? d.provider : x; });
+      renderAll();
+      positionMenu();
+    }).catch(function () {});
+  }
+});
+
+// EFFORT 点阵：点哪个点就是哪档
+effortDotsEl.addEventListener('click', function (e) {
+  var d = e.target.closest('.effort-dot');
+  if (!d || !activeId) return;
+  api('PUT', '/api/providers/' + activeId, { effort: d.dataset.e }).then(function (r) {
+    providers = providers.map(function (x) { return x.id === r.provider.id ? r.provider : x; });
+    renderMenu();
+  }).catch(function () {});
+});
+
+document.getElementById('model-manage').addEventListener('click', function () {
+  closeMenus();
+  openProvModal(null);
+});
+
+// ---------- 开始练习：学习工作台的提交按钮 ----------
+var learnStatus = document.getElementById('learning-status');
+function startLearning() {
+  var input = document.getElementById('learning-input');
+  var goal = input.value.trim();
+  if (!goal) {
+    learnStatus.hidden = false;
+    learnStatus.className = 'learn-status is-warn';
+    learnStatus.textContent = '先描述你的学习目标，再点开始';
+    input.focus();
+    return;
+  }
+  var cur = findProv(activeId) || { model: '', effort: 'medium' };
+  learnStatus.hidden = false;
+  learnStatus.className = 'learn-status';
+  learnStatus.innerHTML = '✓ 练习已开始 · <b>' + esc(goal) + '</b> · 模型 ' + esc(prettyModel(cur.model || '默认模型'))
+    + ' · 强度 ' + (EFFORT_NAMES[cur.effort || 'medium'])
+    + '（练习过程中可随时在下方切换模型与档位）';
+  input.value = '';
+  input.focus();
+}
+document.querySelector('.cli-submit').addEventListener('click', startLearning);
+document.getElementById('learning-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); startLearning(); }
+});
+
+// ---------- 编辑弹窗 ----------
+var modal = document.getElementById('prov-modal');
+var editingId = null;
+var pfType = 'official';
+function setType(t) {
+  pfType = t;
+  document.querySelectorAll('#pf-type button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
+  document.getElementById('pf-url').placeholder = t === 'official' ? 'https://api.anthropic.com' : 'https://your-relay.example.com';
+  document.getElementById('pf-url-hint').textContent = t === 'official' ? '官方直连地址，一般无需修改。' : '填入兼容 Anthropic 协议的中转 / 代理地址。';
+  var cur = findProv(editingId);
+  var keyInput = document.getElementById('pf-key');
+  if (cur && cur.hasKey) {
+    keyInput.placeholder = '已配置（尾号 ' + cur.keyTail + '），留空则不修改';
+  } else {
+    keyInput.placeholder = t === 'official' ? 'sk-ant-...' : '在中转站后台获取的 Key';
+  }
+  document.getElementById('pf-key-hint').textContent = t === 'official' ? '官方 Key 在 console.anthropic.com 创建。' : '第三方 Key 由中转站分发，保存后仅存于本机后端。';
+  renderPreview();
+}
+function renderPreview() {
+  var url = document.getElementById('pf-url').value.trim() || (pfType === 'official' ? 'https://api.anthropic.com' : 'https://your-relay.example.com');
+  var keyVal = document.getElementById('pf-key').value.trim();
+  var keyPart;
+  if (keyVal) {
+    keyPart = '••••' + keyVal.slice(-4);
+  } else {
+    var cur = findProv(editingId);
+    keyPart = cur && cur.hasKey ? '••••' + cur.keyTail + '（已存本地后端）' : '（待填写）';
+  }
+  var model = document.getElementById('pf-model').value.trim() || '（默认模型）';
+  document.getElementById('pf-preview').innerHTML =
+    '<b>ANTHROPIC_BASE_URL</b>=' + esc(url) + '<br>'
+    + '<b>ANTHROPIC_AUTH_TOKEN</b>=' + esc(keyPart) + '<br>'
+    + '<b>ANTHROPIC_MODEL</b>=' + esc(model);
+}
+['pf-url', 'pf-key', 'pf-model'].forEach(function (id) {
+  document.getElementById(id).addEventListener('input', renderPreview);
+});
+document.querySelectorAll('#pf-type button').forEach(function (b) {
+  b.addEventListener('click', function () { setType(b.dataset.t); });
+});
+
+// 把当前表单先保存到后端（Key 只随表单进后端一次），返回配置 id
+function ensureSaved() {
+  var name = document.getElementById('pf-name').value.trim();
+  var url = document.getElementById('pf-url').value.trim();
+  var r = document.getElementById('pf-test-result');
+  if (!name || !url) {
+    r.textContent = '⚠ 请先填写配置名称与接口地址'; r.className = 'pf-test warn';
+    return Promise.resolve(null);
+  }
+  var payload = {
+    name: name, type: pfType, baseUrl: url,
+    modelsUrl: document.getElementById('pf-modelsurl').value.trim(),
+    model: document.getElementById('pf-model').value.trim()
+  };
+  var keyVal = document.getElementById('pf-key').value.trim();
+  if (keyVal) payload.apiKey = keyVal;
+  if (editingId) {
+    return api('PUT', '/api/providers/' + editingId, payload).then(function (d) {
+      providers = providers.map(function (p) { return p.id === d.provider.id ? d.provider : p; });
+      renderAll();
+      return d.provider.id;
+    });
+  }
+  return api('POST', '/api/providers', payload).then(function (d) {
+    providers.push(d.provider);
+    if (!activeId) activeId = d.provider.id;
+    editingId = d.provider.id;
+    document.getElementById('prov-modal-title').textContent = '编辑供应商';
+    renderAll();
+    return d.provider.id;
+  });
+}
+
+// 拉取模型列表（后端代理上游，Key 不出后端）
+document.getElementById('pf-fetch').addEventListener('click', function () {
+  ensureSaved().then(function (id) {
+    if (!id) return;
+    var r = document.getElementById('pf-test-result');
+    var box = document.getElementById('pf-models');
+    r.textContent = '正在拉取模型列表…'; r.className = 'pf-test loading';
+    api('GET', '/api/providers/' + id + '/models').then(function (d) {
+      var curVal = document.getElementById('pf-model').value.trim();
+      r.textContent = '✓ 已拉取 ' + d.models.length + ' 个模型，已在 MODEL 菜单中全部可用'; r.className = 'pf-test ok';
+      box.innerHTML = d.models.map(function (m) {
+        return '<button type="button" class="pf-model-item' + (m === curVal ? ' on' : '') + '" data-m="' + esc(m) + '">' + esc(m) + '</button>';
+      }).join('');
+      box.hidden = false;
+      // 同步到本地状态：MODEL 菜单按供应商分组展示全量模型
+      var pv = findProv(id);
+      if (pv) {
+        pv.models = d.models;
+        if (!pv.model) pv.model = d.models[0];
+      }
+      renderAll();
+    }).catch(function (e) {
+      r.textContent = '✕ 拉取失败：' + e.message; r.className = 'pf-test warn';
+      box.hidden = true;
+    });
+  });
+});
+document.getElementById('pf-models').addEventListener('click', function (e) {
+  var it = e.target.closest('.pf-model-item');
+  if (!it) return;
+  document.getElementById('pf-model').value = it.dataset.m;
+  document.querySelectorAll('.pf-model-item').forEach(function (x) { x.classList.toggle('on', x === it); });
+  renderPreview();
+});
+
+function openProvModal(p) {
+  editingId = p ? p.id : null;
+  document.getElementById('prov-modal-title').textContent = p ? '编辑供应商' : '添加供应商';
+  document.getElementById('pf-name').value = p ? p.name : '';
+  document.getElementById('pf-url').value = p ? p.baseUrl : '';
+  document.getElementById('pf-modelsurl').value = p ? (p.modelsUrl || '') : '';
+  document.getElementById('pf-key').value = '';
+  document.getElementById('pf-model').value = p ? p.model : '';
+  document.getElementById('pf-models').hidden = true;
+  document.getElementById('pf-models').innerHTML = '';
+  setType(p ? p.type : 'official');
+  var tr = document.getElementById('pf-test-result');
+  tr.textContent = ''; tr.className = 'pf-test';
+  modal.hidden = false;
+  document.getElementById('pf-name').focus();
+}
+function closeProvModal() { modal.hidden = true; editingId = null; }
+document.getElementById('prov-add').addEventListener('click', function () { openProvModal(null); });
+document.getElementById('pf-close').addEventListener('click', closeProvModal);
+document.getElementById('pf-cancel').addEventListener('click', closeProvModal);
+modal.addEventListener('click', function (e) { if (e.target === modal) closeProvModal(); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    if (!modal.hidden) closeProvModal();
+    else closeMenus();
+  }
+});
+
+// 测试连接（后端真实请求上游模型列表接口）
+document.getElementById('pf-test').addEventListener('click', function () {
+  ensureSaved().then(function (id) {
+    if (!id) return;
+    var r = document.getElementById('pf-test-result');
+    r.textContent = '测试中…'; r.className = 'pf-test loading';
+    api('POST', '/api/providers/' + id + '/test').then(function (d) {
+      if (d.ok) {
+        r.textContent = '✓ 连接成功 · ' + d.latency + 'ms · ' + d.count + ' 个模型';
+        r.className = 'pf-test ok';
+      } else {
+        r.textContent = '✕ ' + (d.error || '连接失败');
+        r.className = 'pf-test warn';
+      }
+    }).catch(function (e) {
+      r.textContent = '✕ ' + e.message; r.className = 'pf-test warn';
+    });
+  });
+});
+
+document.getElementById('prov-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  ensureSaved().then(function (id) { if (id) closeProvModal(); });
+});
+
+// ---------- 设置列表操作：启用 / 编辑 / 删除 ----------
+document.getElementById('prov-list').addEventListener('click', function (e) {
+  var btn = e.target.closest('.act-btn');
+  if (!btn || btn.disabled) return;
+  var id = btn.closest('.prov-row').dataset.id;
+  var act = btn.dataset.act;
+  if (act === 'enable') {
+    activeId = id; renderAll();
+    api('POST', '/api/providers/' + id + '/enable').catch(function () {});
+  } else if (act === 'edit') {
+    openProvModal(findProv(id));
+  } else if (act === 'del') {
+    if (btn.classList.contains('confirm')) {
+      api('DELETE', '/api/providers/' + id).then(function () {
+        loadProviders();
+      }).catch(function (err) {
+        btn.classList.remove('confirm'); btn.textContent = '删除';
+        btn.textContent = err.message.indexOf('不可删除') > -1 ? '删除' : '删除';
+      });
+    } else {
+      btn.classList.add('confirm'); btn.textContent = '确认删除';
+      setTimeout(function () { btn.classList.remove('confirm'); btn.textContent = '删除'; }, 2500);
+    }
+  }
+});
+
+// ==================== 视图切换：首页 / 学习工作台 / 设置 ====================
+var navItems = document.querySelectorAll('.nav-item[data-view]');
+var views2 = {
+  home: document.getElementById('view-home'),
+  learning: document.getElementById('view-learning'),
+  settings: document.getElementById('view-settings')
+};
+navItems.forEach(function (item) {
+  item.addEventListener('click', function () {
+    navItems.forEach(function (n) { n.classList.remove('is-active'); });
+    item.classList.add('is-active');
+    Object.keys(views2).forEach(function (k) { views2[k].hidden = (k !== item.dataset.view); });
+    window.scrollTo(0, 0);
+    if (item.dataset.view === 'learning') document.getElementById('learning-input').focus();
+  });
+});
+
+// ==================== 02 / DELIVERY 三态切换 ====================
+var seg = document.querySelectorAll('.seg button[data-state]');
+var stateViews = { data: document.getElementById('proj-data'), empty: document.getElementById('proj-empty'), loading: document.getElementById('proj-loading') };
+seg.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    seg.forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    Object.keys(stateViews).forEach(function (k) { stateViews[k].hidden = (k !== btn.dataset.state); });
+  });
+});
+
+// ==================== 待办勾选 ====================
+document.querySelectorAll('.todo input').forEach(function (box) {
+  box.addEventListener('click', function (e) {
+    e.stopPropagation();
+    box.closest('.todo').classList.toggle('done', box.checked);
+  });
+});
+
+// ==================== 启动：旧 localStorage 配置一次性迁移到后端，然后加载 ====================
+(function boot() {
+  var legacy = null;
+  try { legacy = localStorage.getItem('fde_providers_v1'); } catch (e) {}
+  if (legacy) {
+    var parsed = null;
+    try { parsed = JSON.parse(legacy); } catch (e) {}
+    var finish = function () {
+      try { localStorage.removeItem('fde_providers_v1'); } catch (e) {}
+      loadProviders();
+    };
+    if (parsed && parsed.providers && parsed.providers.length) {
+      api('POST', '/api/migrate', parsed).then(finish, finish);
+    } else {
+      finish();
+    }
+  } else {
+    loadProviders();
+  }
+})();
+</script>
