@@ -71,6 +71,229 @@ function sortModels(list) {
   });
 }
 
+// ==================== 学习会话：AI 生成互动课程（teach 模式） ====================
+const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
+const jobs = new Map();           // id → {goal,status,startedAt,chars,model,providerName,effort,controller,error}
+const authStyle = new Map();      // providerId → 'x-api-key' | 'bearer'（记住胜出的鉴权头）
+
+const TEACH_SYSTEM = [
+  '你是 FDE 工作台的课程讲师，为工程师生成一节可直接在浏览器打开的互动学习课程。严格遵守以下合同输出：',
+  '',
+  '【输出格式】',
+  '- 只输出一个以 <!DOCTYPE html> 开头的完整 HTML 文档原文；禁止 markdown 代码围栏、禁止任何解释文字。',
+  '- 单文件自包含：所有 CSS/JS 内联；禁止引用任何外部资源（CDN、网络字体、图片、网络请求），必须离线可打开。',
+  '- 中文内容；整课体量控制在 60KB 以内。<title> 必须是 20 字以内的中文课程标题。',
+  '',
+  '【课程设计（teach 方法论）】',
+  '- 一课只教一个与学习目标紧密相关的窄主题，10-20 分钟可完成，给学习者一个可积累的明确收获。',
+  '- Tufte 风排版：大量留白、清晰层级、克制配色（黑白灰 + 一个强调色）、正文行高 1.6 以上、最大阅读宽度约 70 字符。',
+  '- 4-7 个小节；全课 3-6 道 quiz：所有选项长度尽量一致、正确项位置轮换、不得用格式或顺序泄露答案；答完即时反馈（对/错 + 一句解释 + 允许重试）。',
+  '- 关键论断附真实可查的外部文档链接（<a target="_blank">），增强可信度。',
+  '',
+  '【进度合同（必须实现）】',
+  "- 优先调用宿主注入的 window.FDE：每完成一小节或一题就调用 FDE.progress(0-100, '简短标签')；全部完成调用 FDE.complete()。",
+  "- 若 window.FDE 不存在，则用 parent.postMessage({type:'fde-lesson-progress', progress:0-100, label:'…'}, '*') 与 parent.postMessage({type:'fde-lesson-complete'}, '*')。",
+  '',
+  '【持久化合同（必须实现）】',
+  '- 优先用 window.FDE.save(状态对象) 保存、FDE.load() 恢复。',
+  "- 若不存在，用 localStorage，key 必须是 'fde-lesson-' + window.__LESSON_ID__；保存已答题与选择、当前小节、完成标记；页面加载时恢复进度。",
+  '',
+  '【禁止】alert/confirm/prompt、document.write、自动跳转。'
+].join('\n');
+
+function nextSessionId() {
+  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+  let max = 0;
+  for (const f of fs.readdirSync(SESSIONS_DIR)) {
+    const m = f.match(/^(\d+)\.json$/);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return String(max + 1).padStart(4, '0');
+}
+function writeAtomic(file, data) {
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, file);
+}
+
+// 清洗模型输出：剥 BOM / markdown 围栏 / 首个文档标签之前的闲话
+function sanitizeLessonHtml(raw) {
+  let s = String(raw).replace(/^﻿/, '').replace(/^```(?:html)?\s*/i, '').replace(/```\s*$/, '');
+  const keys = ['<!doctype', '<html'];
+  let idx = -1;
+  for (const k of keys) {
+    const i = s.toLowerCase().indexOf(k);
+    if (i !== -1 && (idx === -1 || i < idx)) idx = i;
+  }
+  if (idx > 0) s = s.slice(idx);
+  return s;
+}
+function extractTitle(html, fallback) {
+  let t = '';
+  let m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (m) t = m[1];
+  if (!t) { m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i); if (m) t = m[1]; }
+  t = String(t).replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ').trim();
+  if (!t) t = String(fallback || '').replace(/\s+/g, ' ').trim();
+  return t.slice(0, 40);
+}
+// 注入宿主桥接：window.FDE 契约 + 裸 postMessage 转发（__bridge 防死循环）
+function injectBridge(id, html) {
+  const bridge = '<script>(function(){'
+    + 'var ID=' + JSON.stringify(id) + ';window.__LESSON_ID__=ID;'
+    + 'var KEY="fde-lesson-"+ID;'
+    + 'function up(m){m.__bridge=1;try{parent.postMessage(m,location.origin)}catch(e){}}'
+    + 'window.FDE={'
+    + 'progress:function(p,label){up({type:"fde-lesson-progress",progress:Math.max(0,Math.min(100,Math.round(Number(p)||0))),label:String(label||"").slice(0,40)})},'
+    + 'complete:function(){up({type:"fde-lesson-complete"})},'
+    + 'save:function(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}},'
+    + 'load:function(){try{return JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){return null}}'
+    + '};'
+    + 'window.addEventListener("message",function(e){var d=e.data;'
+    + 'if(e.source===window&&d&&!d.__bridge){'
+    + 'if(d.type==="fde-lesson-progress")FDE.progress(d.progress,d.label);'
+    + 'if(d.type==="fde-lesson-complete")FDE.complete();}});'
+    + '})();</script>';
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, (m) => m + bridge);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, (m) => m + bridge);
+  return bridge + html;
+}
+
+// 按模型名分族组装生成请求体（当前代 Claude 走 output_config.effort；旧代用 thinking；非 Claude 只缩放 max_tokens）
+function genAttempts(p, goal) {
+  const effort = p.effort || 'medium';
+  const MAX_TOKENS = { minimal: 16384, low: 16384, medium: 32768, high: 49152, max: 64000 };
+  const maxTokens = MAX_TOKENS[effort] || 32768;
+  const m = String(p.model || '').toLowerCase();
+  const isClaude = m.includes('claude');
+  const modernClaude = /claude-(opus-5|sonnet-5|haiku-5|fable|opus-4-[6-9]|sonnet-4-[6-9])/.test(m);
+  const base = { model: p.model, max_tokens: maxTokens, stream: true, system: TEACH_SYSTEM, messages: [{ role: 'user', content: goal }] };
+  if (isClaude && modernClaude) {
+    const map = { minimal: 'low', low: 'low', medium: 'medium', high: 'high', max: 'max' };
+    base.output_config = { effort: map[effort] || 'medium' };
+  } else if (isClaude) {
+    const THINK = { minimal: 1024, low: 2048, medium: 8192, high: 16384, max: 32768 };
+    const budget = THINK[effort] || 8192;
+    base.thinking = { type: 'enabled', budget_tokens: budget };
+    base.max_tokens = Math.max(maxTokens, budget + 4096);
+  }
+  // 降级链：完整体 → 剥思考/档位参数 → max_tokens 步降
+  const stripped = Object.assign({}, base);
+  delete stripped.output_config;
+  delete stripped.thinking;
+  const small = Object.assign({}, stripped, { max_tokens: Math.min(stripped.max_tokens, 32768) });
+  const tiny = Object.assign({}, stripped, { max_tokens: 16384 });
+  return [base, stripped, small, tiny].filter((b, i, arr) => arr.findIndex((x) => JSON.stringify(x) === JSON.stringify(b)) === i);
+}
+
+async function streamOnce(url, headers, body, job, signal) {
+  const r = await fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body), signal: signal });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    const err = new Error('上游 ' + r.status + '：' + String(t).slice(0, 300));
+    if (r.status === 401 || r.status === 403) err.authFail = true;
+    if (r.status === 404) err.message += '（请确认中转支持 POST ' + url + '）';
+    throw err;
+  }
+  const ct = String(r.headers.get('content-type') || '');
+  let text = '', stop = '';
+  if (ct.includes('event-stream')) {
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        const s = line.trim();
+        if (!s || s.startsWith(':') || !s.startsWith('data:')) continue;
+        const payload = s.slice(5).trim();
+        if (payload === '[DONE]') continue;
+        let ev;
+        try { ev = JSON.parse(payload); } catch (e) { continue; }
+        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+          text += ev.delta.text || '';
+          job.chars = text.length;
+        } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
+          stop = ev.delta.stop_reason;
+        } else if (ev.type === 'error') {
+          throw new Error('上游流错误：' + JSON.stringify(ev.error || ev).slice(0, 300));
+        }
+      }
+    }
+  } else {
+    // 中转无视 stream:true，直接返回 JSON
+    const j = await r.json();
+    const blocks = Array.isArray(j.content) ? j.content : [];
+    for (const b of blocks) { if (b && b.type === 'text') text += b.text || ''; }
+    job.chars = text.length;
+    stop = j.stop_reason || '';
+  }
+  return { text: text, stopReason: stop };
+}
+
+async function callMessages(p, body, job, signal) {
+  const base = String(p.baseUrl || '').replace(/\/+$/, '');
+  const url = base + (/\/v1$/.test(base) ? '/messages' : '/v1/messages');
+  const styles = authStyle.get(p.id) ? [authStyle.get(p.id)] : ['x-api-key', 'bearer'];
+  let lastErr = null;
+  for (let i = 0; i < styles.length; i++) {
+    const headers = { 'content-type': 'application/json' };
+    if (styles[i] === 'x-api-key') { headers['x-api-key'] = p.apiKey; headers['anthropic-version'] = '2023-06-01'; }
+    else { headers.authorization = 'Bearer ' + p.apiKey; }
+    try {
+      const out = await streamOnce(url, headers, body, job, signal);
+      authStyle.set(p.id, styles[i]);
+      return out;
+    } catch (e) {
+      lastErr = e;
+      if (e && e.authFail && i < styles.length - 1) continue;
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+async function generateLesson(p, goal, job) {
+  const variants = genAttempts(p, goal);
+  let text = '', stop = '', lastBody = null, lastErr = null;
+  for (const body of variants) {
+    try {
+      const out = await callMessages(p, body, job, job.controller.signal);
+      text = out.text; stop = out.stopReason; lastBody = body;
+      if (!text.trim()) { lastErr = new Error('上游返回空内容'); continue; }
+      break;
+    } catch (e) {
+      lastErr = e;
+      if (e.name === 'AbortError') throw new Error('已取消');
+      if (!/上游 400/.test(e.message)) throw e;   // 仅参数类错误继续降级重试
+    }
+  }
+  if (!lastBody || !text.trim()) throw (lastErr || new Error('生成失败'));
+  if (stop === 'refusal') throw new Error('上游模型拒绝生成该内容');
+  if (stop === 'max_tokens') {
+    // 截断自动续写一轮
+    const cont = Object.assign({}, lastBody, {
+      messages: [
+        { role: 'user', content: goal },
+        { role: 'assistant', content: text },
+        { role: 'user', content: '从截断处原样继续输出剩余内容，不要重复已有内容，不要输出任何解释。' }
+      ]
+    });
+    try {
+      const out2 = await callMessages(p, cont, job, job.controller.signal);
+      text += out2.text;
+    } catch (e) { /* 续写失败不致命 */ }
+  }
+  return text;
+}
+
 // ---------- 存储 ----------
 function loadStore() {
   try {
@@ -275,6 +498,145 @@ const server = http.createServer(async (req, res) => {
           count: r.models ? r.models.length : 0,
           error: r.error || null
         });
+      }
+    }
+
+    // ==================== 学习会话 ====================
+    if (urlPath === '/api/sessions') {
+      // 列表：内存 job ∪ 磁盘 meta，按 id 降序
+      if (req.method === 'GET') {
+        const list = [];
+        const seen = new Set();
+        for (const job of jobs.values()) {
+          list.push({
+            id: job.id, status: job.status, goal: job.goal, title: '',
+            model: job.model, providerName: job.providerName, effort: job.effort,
+            chars: job.chars, elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
+            error: job.error || null
+          });
+          seen.add(job.id);
+        }
+        try {
+          for (const f of fs.readdirSync(SESSIONS_DIR)) {
+            const m2 = f.match(/^(\d+)\.json$/);
+            if (!m2 || seen.has(m2[1])) continue;
+            try { list.push(JSON.parse(fs.readFileSync(path.join(SESSIONS_DIR, f), 'utf8'))); } catch (e) { /* 跳过坏文件 */ }
+          }
+        } catch (e) { /* 目录不存在 */ }
+        list.sort((a, b) => (a.id < b.id ? 1 : -1));
+        return json(res, 200, { sessions: list });
+      }
+
+      // 新建生成任务：同步块内取号 + 登记，立即返回
+      if (req.method === 'POST') {
+        const body = await readBody(req);
+        const goal = String(body.goal || '').trim();
+        if (!goal) return json(res, 400, { error: '请先描述学习目标' });
+        if (goal.length > 2000) return json(res, 400, { error: '学习目标过长（≤2000 字）' });
+        const store = loadStore();
+        const p = store.providers.find((x) => x.id === store.activeId);
+        if (!p) return json(res, 400, { error: '没有可用的模型供应商' });
+        if (!p.apiKey) return json(res, 400, { error: '当前启用的供应商未配置 API Key，请到设置里补全' });
+        const id = nextSessionId();                 // 同步块：取号与登记之间无 await，编号绝不重复
+        const controller = new AbortController();
+        const job = {
+          id: id, goal: goal, status: 'generating', startedAt: Date.now(), chars: 0,
+          model: p.model, providerName: p.name, effort: p.effort || 'medium',
+          controller: controller, error: null
+        };
+        jobs.set(id, job);
+        generateLesson(p, goal, job).then((raw) => {
+          const clean = sanitizeLessonHtml(raw);
+          const title = extractTitle(clean, goal);
+          const nowIso = new Date().toISOString();
+          // 顺序严格：先 html 后 meta；meta 存在 ⇒ 课程完整
+          writeAtomic(path.join(SESSIONS_DIR, id + '.html'), clean);
+          writeAtomic(path.join(SESSIONS_DIR, id + '.json'), JSON.stringify({
+            id: id, title: title, goal: goal, model: p.model, providerName: p.name,
+            effort: p.effort || 'medium', createdAt: nowIso, updatedAt: nowIso,
+            progress: 0, progressLabel: '', status: 'in_progress'
+          }, null, 2));
+          jobs.delete(id);
+        }).catch((e) => {
+          job.status = 'failed';
+          job.error = String((e && e.message) || e);
+        });
+        return json(res, 200, { session: { id: id, status: 'generating' } });
+      }
+      return json(res, 404, { error: 'Not Found' });
+    }
+
+    // /api/sessions/:id[/lesson]
+    const sm = urlPath.match(/^\/api\/sessions\/(\d{3,})(?:\/(lesson))?$/);
+    if (sm) {
+      const sid = sm[1];
+      const job = jobs.get(sid);
+      const metaFile = path.join(SESSIONS_DIR, sid + '.json');
+      const htmlFile = path.join(SESSIONS_DIR, sid + '.html');
+
+      // 单条状态（轮询用）：job 优先，其次磁盘 meta
+      if (req.method === 'GET' && !sm[2]) {
+        if (job) {
+          return json(res, 200, {
+            session: {
+              id: job.id, status: job.status, goal: job.goal, title: '',
+              model: job.model, providerName: job.providerName, effort: job.effort,
+              chars: job.chars, elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
+              error: job.error || null
+            }
+          });
+        }
+        try {
+          return json(res, 200, { session: JSON.parse(fs.readFileSync(metaFile, 'utf8')) });
+        } catch (e) {
+          return json(res, 404, { error: '会话不存在' });
+        }
+      }
+
+      // 课程 HTML：清洗 + 注入桥接，禁缓存
+      if (req.method === 'GET' && sm[2] === 'lesson') {
+        let html;
+        try {
+          html = fs.readFileSync(htmlFile, 'utf8');
+        } catch (e) {
+          return json(res, 404, { error: '课程不存在' });
+        }
+        const out = injectBridge(sid, html);
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:"
+        });
+        return res.end(out);
+      }
+
+      // 更新进度（白名单 + 钳位）
+      if (req.method === 'PATCH' && !sm[2]) {
+        if (job) return json(res, 400, { error: '会话生成中，不可更新进度' });
+        let meta;
+        try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch (e) {
+          return json(res, 404, { error: '会话不存在' });
+        }
+        const b = await readBody(req);
+        if (b.progress !== undefined) meta.progress = Math.max(0, Math.min(100, Math.round(Number(b.progress) || 0)));
+        if (b.progressLabel !== undefined) meta.progressLabel = String(b.progressLabel || '').slice(0, 40);
+        if (b.status !== undefined) {
+          if (b.status !== 'in_progress' && b.status !== 'completed') return json(res, 400, { error: 'status 仅接受 in_progress | completed' });
+          meta.status = b.status;
+        }
+        meta.updatedAt = new Date().toISOString();
+        writeAtomic(metaFile, JSON.stringify(meta, null, 2));
+        return json(res, 200, { session: meta });
+      }
+
+      // 删除：在飞任务中止 + 删文件
+      if (req.method === 'DELETE' && !sm[2]) {
+        if (job) { try { job.controller.abort(); } catch (e) {} jobs.delete(sid); }
+        let existed = false;
+        for (const f of [metaFile, htmlFile]) {
+          try { fs.unlinkSync(f); existed = true; } catch (e) { /* 不存在 */ }
+        }
+        return json(res, existed ? 200 : 404, existed ? { ok: true } : { error: '会话不存在' });
       }
     }
 

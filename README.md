@@ -7,7 +7,7 @@
 ## 功能
 
 - **工作台首页**：今日概览 KPI、FDE Copilot 指令输入条（CLI 风格）、进行中交付卡片（数据 / 空态 / 骨架屏三态切换）、待办与动态
-- **学习工作台**：Claude Code 式开始界面，选择模型与强度后开始练习
+- **学习工作台**：Claude Code 式开始界面，提交学习目标后由当前启用的模型生成一节**自包含互动 HTML 课程**（teach 方法论：quiz 即时反馈、Tufte 风排版、引用可信来源）；左侧学习记录列表按编号 + 标题区分每次学习，课程内进度实时上报并持久化，刷新不丢
 - **模型管理（CC Switch 模式）**：
   - 支持**官方 API**（Anthropic 直连）与**任意兼容 Anthropic 协议的第三方中转**
   - 一键拉取供应商模型列表，全量模型二级下拉切换，按模型能力强弱排序
@@ -48,18 +48,21 @@ open http://127.0.0.1:7842
 
 ```
 ├── fde-workbench.html        # 前端页面（单文件，无构建）
-├── fde-workbench-server.js   # 本地后端（零依赖）：托管页面、保管 Key、代理模型列表/连通性测试
+├── fde-workbench-server.js   # 本地后端（零依赖）：托管页面、保管 Key、代理模型列表/课程生成
 ├── providers.example.json    # 供应商配置模板（复制到 .fde-data/providers.json）
 └── .gitignore                # 已忽略 .fde-data/、.env 等一切敏感与本地文件
 ```
+
+学习会话与生成的课程存放在 `.fde-data/sessions/`（同一被忽略目录，删除会话即清理）。
 
 ## 安全约定
 
 - `**/apiKey` 等敏感字段只存在于 `.fde-data/providers.json`（本地，0600），该目录已被 `.gitignore` 忽略
 - 后端出站接口全部脱敏：只返回 `hasKey` 与尾号 4 位
 - 提交/开源前请确认 `.fde-data/`、`.env` 不在暂存区
+- 生成的课程 HTML 是模型产出内容，仅建议本地自用；课程页已强制 CSP（禁外部资源加载）
 
 ## Roadmap
 
 - 设置页扩展：MCP 管理、Skill 管理（子导航已预留占位）
-- 学习工作台练习会话持久化
+- 学习工作台：teach 式多文件教学工作区（MISSION、参考资料、学习记录）
