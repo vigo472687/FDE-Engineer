@@ -518,6 +518,12 @@ svg { flex: none; }
   background: var(--err-soft); color: var(--err);
   font-size: 12.5px; font-family: var(--mono); word-break: break-all;
 }
+.gen-note {
+  margin-top: 8px; padding: 8px 12px;
+  border: 1px solid var(--primary-tint); border-radius: 8px;
+  background: var(--primary-soft); color: var(--primary);
+  font-size: 12.5px; line-height: 1.5;
+}
 @media (max-width: 900px) {
   .learn-layout { flex-direction: column; }
   .learn-side { width: 100%; position: static; }
@@ -1090,6 +1096,7 @@ svg { flex: none; }
             <div id="learn-generating" hidden>
               <div class="gen-card">
                 <div class="gen-status">正在备课…</div>
+                <div class="gen-note" id="gen-note" hidden></div>
                 <div class="gen-metrics">
                   <span>已用时 <b id="gen-elapsed">0:00</b></span>
                   <span>已生成 <b id="gen-chars">0</b> 字符</span>
@@ -1534,6 +1541,9 @@ function showGenerating(s) {
   showLearnView('generating');
   learnStatus.hidden = true;
   document.getElementById('gen-err').hidden = true;
+  var note = document.getElementById('gen-note');
+  note.hidden = !s.fallbackNote;
+  note.textContent = s.fallbackNote || '';
   document.querySelector('#learn-generating .gen-actions').innerHTML =
     '<button class="btn btn-ghost btn-sm" id="gen-cancel">取消生成</button>';
   document.getElementById('gen-chars').textContent = s.chars || 0;
@@ -1568,6 +1578,8 @@ function startPolling(id) {
       sessions = sessions.map(function (x) { return x.id === id ? Object.assign({}, x, s, { id: id }) : x; });
       renderSessions();
       document.getElementById('gen-chars').textContent = s.chars || 0;
+      var note = document.getElementById('gen-note');
+      if (s.fallbackNote) { note.hidden = false; note.textContent = s.fallbackNote; }
       if (s.status === 'failed') {
         stopPolling();
         showGenError(s.error || '生成失败', id);

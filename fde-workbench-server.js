@@ -583,7 +583,7 @@ const server = http.createServer(async (req, res) => {
             id: job.id, status: job.status, goal: job.goal, title: '',
             model: job.model, providerName: job.providerName, effort: job.effort,
             chars: job.chars, elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
-            error: job.error || null
+            error: job.error || null, fallbackNote: job.fallbackNote || null
           });
           seen.add(job.id);
         }
@@ -616,23 +616,51 @@ const server = http.createServer(async (req, res) => {
           controller: controller, error: null
         };
         jobs.set(id, job);
-        const gen = p.type === 'claude-code' ? generateLessonCC(p, goal, job) : generateLesson(p, goal, job);
-        gen.then((raw) => {
+        const finishOk = (raw, used) => {
           const clean = sanitizeLessonHtml(raw);
           const title = extractTitle(clean, goal);
           const nowIso = new Date().toISOString();
           // 顺序严格：先 html 后 meta；meta 存在 ⇒ 课程完整
           writeAtomic(path.join(SESSIONS_DIR, id + '.html'), clean);
           writeAtomic(path.join(SESSIONS_DIR, id + '.json'), JSON.stringify({
-            id: id, title: title, goal: goal, model: p.model, providerName: p.name,
-            effort: p.effort || 'medium', createdAt: nowIso, updatedAt: nowIso,
+            id: id, title: title, goal: goal, model: used.model, providerName: used.name,
+            effort: used.effort || 'medium', createdAt: nowIso, updatedAt: nowIso,
             progress: 0, progressLabel: '', status: 'in_progress'
           }, null, 2));
           jobs.delete(id);
-        }).catch((e) => {
+        };
+        const setFailed = (e) => {
           job.status = 'failed';
           job.error = String((e && e.message) || e);
-        });
+        };
+        const finishFail = (e) => {
+          const msg = String((e && e.message) || e);
+          // REST 引擎被「仅允许 Claude Code 客户端」的中转拒绝 → 自动切换订阅引擎重试
+          let cc = null;
+          if (p.type !== 'claude-code' && /only allows Claude Code clients/i.test(msg)) {
+            cc = loadStore().providers.find((x) => x.type === 'claude-code');
+          }
+          if (cc) {
+            job.status = 'generating';
+            job.error = null;
+            job.chars = 0;
+            job.providerName = cc.name;
+            job.model = cc.model;
+            job.effort = cc.effort || 'medium';
+            job.fallbackNote = '当前中转仅允许 Claude Code 客户端调用，已自动切换「Claude Code 订阅」引擎重试';
+            generateLessonCC(cc, goal, job).then((raw) => finishOk(raw, cc)).catch(setFailed);
+          } else {
+            setFailed(e);
+            if (/only allows Claude Code clients/i.test(msg)) {
+              job.error = msg + '｜提示：可在设置里添加「Claude Code 订阅」引擎，用订阅额度生成';
+            }
+          }
+        };
+        const runWith = (prov) => {
+          const gen = prov.type === 'claude-code' ? generateLessonCC(prov, goal, job) : generateLesson(prov, goal, job);
+          gen.then((raw) => finishOk(raw, prov)).catch(finishFail);
+        };
+        runWith(p);
         return json(res, 200, { session: { id: id, status: 'generating' } });
       }
       return json(res, 404, { error: 'Not Found' });
@@ -654,7 +682,7 @@ const server = http.createServer(async (req, res) => {
               id: job.id, status: job.status, goal: job.goal, title: '',
               model: job.model, providerName: job.providerName, effort: job.effort,
               chars: job.chars, elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
-              error: job.error || null
+              error: job.error || null, fallbackNote: job.fallbackNote || null
             }
           });
         }
