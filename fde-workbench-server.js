@@ -318,7 +318,8 @@ function sanitize(p) {
     model: p.model || '', effort: p.effort || 'medium',
     models: Array.isArray(p.models) ? p.models : [],
     effortOptions: effortOptionsFor(p.model),
-    hasKey: !!p.apiKey, keyTail: p.apiKey ? p.apiKey.slice(-4) : ''
+    hasKey: p.type === 'claude-code' ? true : !!p.apiKey,
+    keyTail: p.apiKey ? p.apiKey.slice(-4) : ''
   };
 }
 
@@ -353,6 +354,75 @@ async function listModels(p) {
     }
   }
   return { ok: false, error: lastErr };
+}
+
+// ---------- 引擎 B：Claude Code 订阅（Agent SDK，复用本机 CC 登录态） ----------
+async function generateLessonCC(p, goal, job) {
+  let mod;
+  try {
+    mod = await import('@anthropic-ai/claude-agent-sdk');
+  } catch (e) {
+    throw new Error('Claude Code 引擎未安装：请在项目目录执行 npm install 后重试');
+  }
+  const outPath = path.join(SESSIONS_DIR, job.id + '.html');
+  const prompt = [
+    '请为工程师生成一节互动学习课程。学习目标：' + goal,
+    '',
+    TEACH_SYSTEM,
+    '',
+    '【产出节奏】先快速规划结构与要点，随即开始产出，避免超长思考——课程体量以 40KB 为上限。',
+    '',
+    '【交付方式】',
+    '- 把最终课程 HTML 用 Write 工具写入文件（绝对路径）：' + outPath,
+    '- 写完后只回复 DONE，不要把 HTML 粘贴到对话里。'
+  ].join('\n');
+  const q = mod.query({
+    prompt: prompt,
+    options: {
+      systemPrompt: '你是 FDE 工作台的课程讲师，只完成被要求的任务，不做任何额外动作。',
+      allowedTools: ['Write'],
+      permissionMode: 'acceptEdits',
+      maxTurns: 6,
+      includePartialMessages: true,
+      cwd: SESSIONS_DIR
+    }
+  });
+  let text = '';
+  let streamedChars = 0;   // 文本 delta + Write 工具入参 delta，反映真实生成进度
+  const deadline = Date.now() + 1200000;
+  try {
+    for await (const message of q) {
+      if (Date.now() > deadline) {
+        try { await q.interrupt(); } catch (e) { /* 已结束 */ }
+        throw new Error('Claude Code 生成超时（12 分钟）');
+      }
+      if (message.type === 'stream_event' && message.event && message.event.type === 'content_block_delta') {
+        const d = message.event.delta || {};
+        if (d.type === 'text_delta') streamedChars += (d.text || '').length;
+        if (d.type === 'input_json_delta') streamedChars += (d.partial_json || '').length;
+        job.chars = streamedChars;
+      }
+      if (message.type === 'assistant' && message.message && Array.isArray(message.message.content)) {
+        for (const b of message.message.content) {
+          if (b.type === 'text') { text += b.text || ''; job.chars = streamedChars; }
+        }
+      }
+      if (message.type === 'result' && message.is_error) {
+        throw new Error('Claude Code 返回错误：' + String(message.result || '').slice(0, 200));
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('已取消');
+    throw e;
+  }
+  // 优先取 Write 写出的文件；取不到再退回对话文本
+  try {
+    return fs.readFileSync(outPath, 'utf8');
+  } catch (e) {
+    const clean = sanitizeLessonHtml(text);
+    if (clean.length > 200) return clean;
+    throw new Error('Claude Code 未产出课程文件（若未登录订阅请先在终端 claude /login）');
+  }
 }
 
 // ---------- HTTP 基础 ----------
@@ -433,12 +503,13 @@ const server = http.createServer(async (req, res) => {
     // ---------- 新增 ----------
     if (req.method === 'POST' && urlPath === '/api/providers') {
       const b = await readBody(req);
-      if (!b.name || !b.baseUrl) return json(res, 400, { error: '名称与接口地址为必填项' });
+      if (!b.name) return json(res, 400, { error: '配置名称为必填项' });
+      if (!b.baseUrl && b.type !== 'claude-code') return json(res, 400, { error: '接口地址为必填项' });
       const store = loadStore();
       const p = {
-        id: 'p' + Date.now(), name: b.name, type: b.type === 'official' ? 'official' : 'relay',
+        id: 'p' + Date.now(), name: b.name, type: b.type === 'official' ? 'official' : (b.type === 'claude-code' ? 'claude-code' : 'relay'),
         color: (store.providers.length % 4 === 0 && 'blue') || ['blue', 'indigo', 'green', 'amber'][store.providers.length % 4],
-        baseUrl: b.baseUrl, modelsUrl: b.modelsUrl || '',
+        baseUrl: b.baseUrl || '', modelsUrl: b.modelsUrl || '',
         apiKey: b.apiKey || '', model: b.model || '', effort: b.effort || 'medium'
       };
       store.providers.push(p);
@@ -456,7 +527,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'PUT' && !m[2]) {
         const b = await readBody(req);
         if (b.name !== undefined) p.name = b.name;
-        if (b.type !== undefined) p.type = b.type === 'official' ? 'official' : 'relay';
+        if (b.type !== undefined) p.type = b.type === 'official' ? 'official' : (b.type === 'claude-code' ? 'claude-code' : 'relay');
         if (b.baseUrl !== undefined) p.baseUrl = b.baseUrl;
         if (b.modelsUrl !== undefined) p.modelsUrl = b.modelsUrl;
         if (b.model !== undefined) p.model = b.model;
@@ -536,7 +607,7 @@ const server = http.createServer(async (req, res) => {
         const store = loadStore();
         const p = store.providers.find((x) => x.id === store.activeId);
         if (!p) return json(res, 400, { error: '没有可用的模型供应商' });
-        if (!p.apiKey) return json(res, 400, { error: '当前启用的供应商未配置 API Key，请到设置里补全' });
+        if (p.type !== 'claude-code' && !p.apiKey) return json(res, 400, { error: '当前启用的供应商未配置 API Key，请到设置里补全' });
         const id = nextSessionId();                 // 同步块：取号与登记之间无 await，编号绝不重复
         const controller = new AbortController();
         const job = {
@@ -545,7 +616,8 @@ const server = http.createServer(async (req, res) => {
           controller: controller, error: null
         };
         jobs.set(id, job);
-        generateLesson(p, goal, job).then((raw) => {
+        const gen = p.type === 'claude-code' ? generateLessonCC(p, goal, job) : generateLesson(p, goal, job);
+        gen.then((raw) => {
           const clean = sanitizeLessonHtml(raw);
           const title = extractTitle(clean, goal);
           const nowIso = new Date().toISOString();

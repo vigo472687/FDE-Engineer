@@ -8,6 +8,9 @@
 
 - **工作台首页**：今日概览 KPI、FDE Copilot 指令输入条（CLI 风格）、进行中交付卡片（数据 / 空态 / 骨架屏三态切换）、待办与动态
 - **学习工作台**：Claude Code 式开始界面，提交学习目标后由当前启用的模型生成一节**自包含互动 HTML 课程**（teach 方法论：quiz 即时反馈、Tufte 风排版、引用可信来源）；左侧学习记录列表按编号 + 标题区分每次学习，课程内进度实时上报并持久化，刷新不丢
+- **双引擎**：
+  - **Claude Code 订阅引擎**：复用本机 Claude Code 登录态（Pro/Max 订阅额度），由 Claude Code 生成课程；需 `npm install` 安装可选依赖 `@anthropic-ai/claude-agent-sdk`
+  - **REST 外接引擎**：任意 Anthropic 兼容供应商（官方 API / 中转 / DeepSeek、Kimi、GLM 等），Key 保存在本机后端
 - **模型管理（CC Switch 模式）**：
   - 支持**官方 API**（Anthropic 直连）与**任意兼容 Anthropic 协议的第三方中转**
   - 一键拉取供应商模型列表，全量模型二级下拉切换，按模型能力强弱排序

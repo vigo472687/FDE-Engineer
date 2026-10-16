@@ -1172,19 +1172,20 @@ svg { flex: none; }
         <div class="seg" id="pf-type" role="group" aria-label="供应商类型">
           <button type="button" class="on" data-t="official">官方 API</button>
           <button type="button" data-t="relay">第三方 API</button>
+          <button type="button" data-t="claude-code">Claude Code 订阅</button>
         </div>
       </div>
-      <label class="pf-field">
+      <label class="pf-field" id="pf-url-field">
         <span>接口地址（Base URL）</span>
         <input id="pf-url" placeholder="https://api.anthropic.com">
         <p class="pf-hint" id="pf-url-hint">官方直连地址，一般无需修改。</p>
       </label>
-      <label class="pf-field">
+      <label class="pf-field" id="pf-key-field">
         <span>API Key</span>
         <input id="pf-key" type="password" placeholder="sk-ant-...">
         <p class="pf-hint" id="pf-key-hint">官方 Key 在 console.anthropic.com 创建。</p>
       </label>
-      <label class="pf-field">
+      <label class="pf-field" id="pf-modelsurl-field">
         <span>模型列表地址（可选）</span>
         <input id="pf-modelsurl" placeholder="留空 = 接口地址 + /v1/models">
         <p class="pf-hint">部分中转的模型列表不在默认地址，需单独填写。</p>
@@ -1275,8 +1276,8 @@ function renderProvList() {
     return '<div class="prov-row' + (isActive ? ' is-active' : '') + '" data-id="' + p.id + '">'
       + '<span class="ccswitch-dot d-' + p.color + '"></span>'
       + '<div class="prov-info">'
-      +   '<div class="prov-name">' + esc(p.name) + '<span class="prov-type">' + (p.type === 'official' ? '官方' : '第三方') + '</span></div>'
-      +   '<div class="prov-url">' + esc(p.baseUrl) + (p.hasKey ? ' · Key ••••' + esc(p.keyTail) : '') + '</div>'
+      +   '<div class="prov-name">' + esc(p.name) + '<span class="prov-type">' + (p.type === 'official' ? '官方' : (p.type === 'claude-code' ? '订阅' : '第三方')) + '</span></div>'
+      +   '<div class="prov-url">' + esc(p.type === 'claude-code' ? '本机 Claude Code · 订阅额度' : p.baseUrl + (p.hasKey ? ' · Key ••••' + esc(p.keyTail) : '')) + '</div>'
       + '</div>'
       + '<span class="prov-model">' + esc(p.model || '—') + '</span>'
       + status
@@ -1333,25 +1334,32 @@ var expandedProvId = null; // null → 默认展开当前启用的供应商
 function renderMenu() {
   var expanded = expandedProvId || activeId;
   msItems.innerHTML = providers.map(function (p) {
-    var models = (p.models && p.models.length) ? p.models.slice().sort(cmpModels) : [p.model || '默认模型'];
+    var isCC = p.type === 'claude-code';
+    var models = isCC
+      ? [p.model || 'Claude Code 订阅']
+      : ((p.models && p.models.length) ? p.models.slice().sort(cmpModels) : [p.model || '默认模型']);
     var isExp = p.id === expanded;
+    var countText = isCC
+      ? (p.model ? prettyModel(p.model) : '订阅引擎')
+      : (p.models && p.models.length ? p.models.length + ' 个模型' : '未拉取列表');
     var row = '<button class="prov-group' + (isExp ? ' is-exp' : '') + '" data-prov="' + p.id + '" title="' + esc(p.name) + '（点击展开全部模型）">'
       + '<span class="ccswitch-dot d-' + p.color + '"></span>'
       + '<span class="prov-name">' + esc(p.name) + '</span>'
-      + '<span class="mid">' + (p.models && p.models.length ? p.models.length + ' 个模型' : '未拉取列表') + '</span>'
+      + '<span class="mid">' + countText + '</span>'
       + '<span class="chev">▸</span></button>';
     if (!isExp) return row;
     // 二级：展开供应商的全量模型，超出部分在 .model-sub 内滚动
     return row + '<div class="model-sub">' + models.map(function (m) {
-      var isCur = p.id === activeId && m === p.model;
-      return '<button class="ccswitch-item' + (isCur ? ' is-active' : '') + '" role="option" data-id="' + p.id + '" data-model="' + esc(m) + '">'
+      var raw = isCC ? (p.model || '') : m;
+      var isCur = p.id === activeId && (isCC || m === p.model);
+      return '<button class="ccswitch-item' + (isCur ? ' is-active' : '') + '" role="option" data-id="' + p.id + '" data-model="' + esc(raw) + '">'
         + '<span class="mid mid-full">' + esc(prettyModel(m)) + '</span>'
         + '<span class="check">✓</span></button>';
     }).join('') + '</div>';
   }).join('');
   var cur = findProv(activeId);
   if (cur) {
-    document.getElementById('model-current-id').textContent = cur.model ? prettyModel(cur.model) : '';
+    document.getElementById('model-current-id').textContent = cur.model ? prettyModel(cur.model) : (cur.type === 'claude-code' ? '订阅引擎' : '');
     document.getElementById('model-current-dot').className = 'ccswitch-dot d-' + cur.color;
   }
   // EFFORT：档位随模型动态生成（服务端按模型名给出），点阵切换
@@ -1714,20 +1722,32 @@ var editingId = null;
 var pfType = 'official';
 function setType(t) {
   pfType = t;
+  const isCC = t === 'claude-code';
   document.querySelectorAll('#pf-type button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
-  document.getElementById('pf-url').placeholder = t === 'official' ? 'https://api.anthropic.com' : 'https://your-relay.example.com';
-  document.getElementById('pf-url-hint').textContent = t === 'official' ? '官方直连地址，一般无需修改。' : '填入兼容 Anthropic 协议的中转 / 代理地址。';
-  var cur = findProv(editingId);
-  var keyInput = document.getElementById('pf-key');
-  if (cur && cur.hasKey) {
-    keyInput.placeholder = '已配置（尾号 ' + cur.keyTail + '），留空则不修改';
-  } else {
-    keyInput.placeholder = t === 'official' ? 'sk-ant-...' : '在中转站后台获取的 Key';
+  document.getElementById('pf-url-field').hidden = isCC;
+  document.getElementById('pf-key-field').hidden = isCC;
+  document.getElementById('pf-modelsurl-field').hidden = isCC;
+  document.getElementById('pf-model').placeholder = isCC ? '留空 = Claude Code 当前模型' : 'claude-opus-4-6';
+  if (!isCC) {
+    document.getElementById('pf-url').placeholder = t === 'official' ? 'https://api.anthropic.com' : 'https://your-relay.example.com';
+    document.getElementById('pf-url-hint').textContent = t === 'official' ? '官方直连地址，一般无需修改。' : '填入兼容 Anthropic 协议的中转 / 代理地址。';
+    var cur = findProv(editingId);
+    var keyInput = document.getElementById('pf-key');
+    if (cur && cur.hasKey && cur.keyTail) {
+      keyInput.placeholder = '已配置（尾号 ' + cur.keyTail + '），留空则不修改';
+    } else {
+      keyInput.placeholder = t === 'official' ? 'sk-ant-...' : '在中转站后台获取的 Key';
+    }
+    document.getElementById('pf-key-hint').textContent = t === 'official' ? '官方 Key 在 console.anthropic.com 创建。' : '第三方 Key 由中转站分发，保存后仅存于本机后端。';
   }
-  document.getElementById('pf-key-hint').textContent = t === 'official' ? '官方 Key 在 console.anthropic.com 创建。' : '第三方 Key 由中转站分发，保存后仅存于本机后端。';
   renderPreview();
 }
 function renderPreview() {
+  var box = document.getElementById('pf-preview');
+  if (pfType === 'claude-code') {
+    box.innerHTML = '<b>引擎</b>=本机 Claude Code（订阅额度）<br><b>鉴权</b>=复用本机 Claude Code 登录态，无需 Key';
+    return;
+  }
   var url = document.getElementById('pf-url').value.trim() || (pfType === 'official' ? 'https://api.anthropic.com' : 'https://your-relay.example.com');
   var keyVal = document.getElementById('pf-key').value.trim();
   var keyPart;
@@ -1738,7 +1758,7 @@ function renderPreview() {
     keyPart = cur && cur.hasKey ? '••••' + cur.keyTail + '（已存本地后端）' : '（待填写）';
   }
   var model = document.getElementById('pf-model').value.trim() || '（默认模型）';
-  document.getElementById('pf-preview').innerHTML =
+  box.innerHTML =
     '<b>ANTHROPIC_BASE_URL</b>=' + esc(url) + '<br>'
     + '<b>ANTHROPIC_AUTH_TOKEN</b>=' + esc(keyPart) + '<br>'
     + '<b>ANTHROPIC_MODEL</b>=' + esc(model);
@@ -1755,8 +1775,9 @@ function ensureSaved() {
   var name = document.getElementById('pf-name').value.trim();
   var url = document.getElementById('pf-url').value.trim();
   var r = document.getElementById('pf-test-result');
-  if (!name || !url) {
-    r.textContent = '⚠ 请先填写配置名称与接口地址'; r.className = 'pf-test warn';
+  if (!name || (pfType !== 'claude-code' && !url)) {
+    r.textContent = pfType === 'claude-code' ? '⚠ 请先填写配置名称' : '⚠ 请先填写配置名称与接口地址';
+    r.className = 'pf-test warn';
     return Promise.resolve(null);
   }
   var payload = {

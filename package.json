@@ -1,0 +1,16 @@
+{
+  "name": "fde-engineer-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FDE 工作台：交付工程师的本地工作台，内置 Claude Code 订阅 / 外接模型双引擎的学习工作台",
+  "main": "fde-workbench-server.js",
+  "scripts": {
+    "start": "node fde-workbench-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.282"
+  }
+}
