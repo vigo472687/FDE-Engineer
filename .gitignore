@@ -29,3 +29,6 @@ Thumbs.db
 # Agent 宪法与入口（个人 AI 配置，仅本地使用，不入开源仓库）
 AGENTS.md
 CLAUDE.md
+
+# CodeGraph 本地索引
+.codegraph/
